@@ -199,6 +199,21 @@ textarea{width:100%;font-family:var(--mono);font-size:.78rem}
 @keyframes quake{0%,100%{transform:none}20%{transform:translate(-3px,1px) rotate(-2deg)}40%{transform:translate(3px,-1px) rotate(2deg)}60%{transform:translate(-2px,0) rotate(-1deg)}80%{transform:translate(2px,1px) rotate(1deg)}}
 .brand h1{cursor:default;user-select:none}.brand h1.quake,.recruit.quake{animation:quake .3s 3}
 .fc.dead{opacity:.55}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:stretch}
+.pc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.pc.off{opacity:.6}
+.pch{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.pch h3{font-size:1.3rem}
+.pickbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + 62px);z-index:5;display:flex;flex-direction:column;gap:8px}
+@media (max-width:600px){.pickbar{position:static}}
+.rtiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.rtile{display:flex;flex-direction:column;gap:4px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);text-decoration:none;color:var(--fg)}
+.rtile strong{font-family:var(--display);font-weight:400;font-size:1.45rem;color:var(--blood)}
+.rtile span{color:var(--muted);font-size:.9rem}
+.rtile:hover{border-color:var(--blood)}
+.toc a[aria-current="page"]{background:var(--blood-soft);color:var(--blood);font-weight:700}
+.crumbs{font-size:.88rem;color:var(--muted)}.crumbs a{color:var(--muted)}
+a.btn{text-decoration:none;color:var(--fg);display:inline-block}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -868,10 +883,12 @@ function validate(){const I=[];const fs=alive();const cnt=t=>fs.filter(f=>f.type
 /* ============================== ROUTER ============================== */
 const app=document.getElementById('app');
 function applyDed(){document.documentElement.dataset.ded=D().key;const tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.content=getComputedStyle(document.documentElement).getPropertyValue('--surface').trim()||tc.content;const sm=document.querySelector('.brand small');if(sm)sm.textContent='Chaos Cult · '+D().n}
-function route(){applyDed();const h=(location.hash||'#build').slice(1);const r=['build','play','rules'].includes(h)?h:'build';
- document.querySelectorAll('.tabs a').forEach(a=>a.setAttribute('aria-current',a.dataset.route===r?'page':'false'));
- if(r==='build')renderBuild();else if(r==='play')renderPlay();else renderRules();}
-window.addEventListener('hashchange',()=>{route();window.scrollTo(0,0)});
+function route(){applyDed();const h=(location.hash||'#build').slice(1);
+ let r='build',sub='';if(h==='play')r='play';else if(h==='rules'||h.startsWith('rules-')){r='rules';sub=h.slice(6)}else if(h==='pick')r='pick';
+ document.querySelectorAll('.tabs a').forEach(a=>a.setAttribute('aria-current',(a.dataset.route===r||(r==='pick'&&a.dataset.route==='build'))?'page':'false'));
+ if(r==='pick'){if(!UI.pick||!byUid(UI.pick.uid)){location.hash='#build';return}renderPick();return}
+ if(r==='build'){renderBuild();if(UI.scrollTo){const u=UI.scrollTo;UI.scrollTo=null;saveUI();requestAnimationFrame(()=>document.querySelector(`[data-uid="${u}"]`)?.scrollIntoView({block:'start'}))}}else if(r==='play')renderPlay();else renderRules(sub);}
+window.addEventListener('hashchange',()=>{window.scrollTo(0,0);route()});
 
 /* ============================== BUILDER ============================== */
 let confirmKey=null;
@@ -932,13 +949,13 @@ function cardEdit(f){const T=FT[f.type],st=stats(f),c=cost(f),k=f.uid;
   ${wtable(weaponsOf(f))}
   ${T.code?`<div class="sub"><span class="label">Equipment</span><p class="muted" style="font-size:.82rem">${esc(T.equip)} All ranged weapons count as Scarce.</p>
    <div class="chips">${(f.items||[]).map((n,i)=>`<span class="chip">${esc(n)} <b>${EQ[n]?EQ[n].c:''}</b><button aria-label="Remove ${esc(n)}" data-rmitem="${k}" data-i="${i}">×</button></span>`).join('')||'<span class="muted">Nothing yet.</span>'}</div>
-   <select data-additem="${k}" id="ai-${k}" aria-label="Add equipment"><option value="">+ Add equipment…</option>${optList(f)}</select>
+   <div class="row"><button class="btn small primary" data-pick="${k}" data-kind="equip">Browse equipment</button></div>
    ${gear.length?`<div class="rules-list">${gear.map(n=>`<details class="rd"><summary>${esc(n)}</summary><p>${esc(EQD[n]||'')}</p></details>`).join('')}</div>`:''}
   </div>`:`<p class="muted" style="font-size:.88rem">${esc(T.equip)}</p>`}
   ${f.type==='ogryn'?`<div class="sub"><span class="label">Ogryn options</span><div class="row">${[0,1].map(h=>`<select data-hand="${k}" data-h="${h}" id="h${h}-${k}" aria-label="Hand ${h+1}">${['Open Fist','Power Maul','Horrific Appendages'].map(o=>`<option ${(f.hands||['Open Fist','Open Fist'])[h]===o?'selected':''}>${o}</option>`).join('')}</select>`).join('')}<label class="check"><input type="checkbox" data-plate="${k}" id="pl-${k}" ${f.plate?'checked':''}> Plate Mail (+15)</label></div><p class="muted" style="font-size:.82rem">Power Maul +30, Horrific Appendages +20, each replacing one Open Fist.</p></div>`:''}
   ${canMut?`<div class="sub"><span class="label">Mutations ${muts.length}/${st.T} Toughness${G.founding&&T.mut[1]?` · recruit ${T.mut[0]}–${T.mut[1]}`:''}</span>
    <div class="chips">${muts.map((n,i)=>`<span class="chip" title="${esc(MUTS[n]?.t)}">${esc(n)} <b>${MUTS[n]?.c}</b><button aria-label="Remove ${esc(n)}" data-rmmut="${k}" data-i="${i}">×</button></span>`).join('')||'<span class="muted">None.</span>'}</div>
-   <select data-addmut="${k}" id="am-${k}" aria-label="Add mutation"><option value="">+ Add mutation…</option>${MUTL.filter(m=>!muts.includes(m[1])).map(m=>`<option value="${esc(m[1])}">${m[0]} ${esc(m[1])} – ${m[2]}</option>`).join('')}</select>
+   <div class="row"><button class="btn small primary" data-pick="${k}" data-kind="mut">Browse mutations</button></div>
    ${muts.length?`<div class="rules-list">${muts.map(n=>`<details class="rd"><summary>${esc(n)}</summary><p>${esc(MUTS[n]?.t)}</p></details>`).join('')}</div>`:''}
   </div>`:''}
   ${T.wyrd?`<div class="sub"><span class="label">Wyrd Powers – first free, +30 each extra (recruitment only)</span><div class="grid2">${WYRD.map(w=>`<label class="check"><input type="checkbox" data-wyrd="${k}" value="${esc(w[0])}" ${(f.wyrd||[]).includes(w[0])?'checked':''}> ${esc(w[0])}</label>`).join('')}</div></div>`:''}
@@ -966,6 +983,7 @@ function cardEdit(f){const T=FT[f.type],st=stats(f),c=cost(f),k=f.uid;
 const byUid=k=>G.fighters.find(f=>f.uid===k);
 function commit(){G.example=false;save();renderBuild()}
 app.addEventListener('click',e=>{const el=e.target.closest('button,[data-toggle]');if(!el||!document.querySelector('.builder'))return;const d=el.dataset;
+ if(d.pick){UI.pick={uid:d.pick,kind:d.kind};UI.pickCat='all';UI.pickQ='';saveUI();location.hash='#pick';return}
  if(d.toggle){const f=byUid(d.toggle);f.open=!f.open;save();renderBuild();return}
  if(d.act==='addsel'){const v=document.getElementById('add-sel').value;if(v){UI.addSel=v;saveUI();d.add=v}}
  if(d.add){const t=d.add;const f=F(t,'',[],[],{open:true});if(t==='ogryn')f.hands=['Open Fist','Open Fist'];G.fighters.forEach(x=>x.open=false);G.fighters.push(f);commit();
@@ -1128,7 +1146,7 @@ function playSheet(){const sec=(t,b,open)=>`<details class="rd" ${open?'open':''
  ${sec('Familiar & Daemon',`<p><strong>Familiar:</strong> ${esc(EQD.Familiar)} ${esc(RULES['Omen of Fortune'])} ${esc(RULES['Precognition'])}</p><p><strong>Daemon:</strong> summoned only by “Call the Void” (12+). ${esc(RULES.Terrifying)} ${esc(RULES.Incorporeal)} ${esc(RULES.Instability)}</p>`)}
  </div>`}
 
-app.addEventListener('click',e=>{if(!document.querySelector('.seg'))return;const el=e.target.closest('button');if(!el)return;const d=el.dataset;
+app.addEventListener('click',e=>{if(!document.querySelector('[data-ptab]'))return;const el=e.target.closest('button');if(!el)return;const d=el.dataset;
  if(d.ptab){UI.play=d.ptab;saveUI();renderPlay();return}
  if(d.pli){const f=byUid(d.pli);lastLI[f.uid]=rollLI(f);save();renderPlay();toast(`${lastLI[f.uid].v}: ${lastLI[f.uid].r.n}`);return}
  if(d.fw){const f=byUid(d.fw),s=fsOf(f);s.fw=Math.max(0,s.fw+(+d.d));if(s.fw>=stats(f).T&&s.st!=='ooa'){s.st='ooa';toast(`${f.name||FT[f.type].n} goes Out of Action`)}saveB();renderPlay();return}
@@ -1157,7 +1175,7 @@ app.addEventListener('click',e=>{if(!document.querySelector('.seg'))return;const
 function draw(n){const all=[];Object.keys(SP).forEach(s=>RANKS.forEach(r=>all.push(s+'-'+r)));all.push('JK-1','JK-2');
  for(let i=0;i<n;i++){const avail=all.filter(c=>!DK.removed.includes(c)&&!DK.hand.includes(c)&&!(DK.jok||[]).includes(c));if(!avail.length){DK.note='The deck is empty.';return}
   const c=avail[Math.floor(Math.random()*avail.length)];if(c.startsWith('JK')){DK.jok=(DK.jok||[]).concat(c);DK.note='Joker! Show it to your opponent and discard it. Drawing two more…';draw(2);DK.jok=[];continue}DK.hand.push(c)}}
-app.addEventListener('change',e=>{if(!document.querySelector('.seg'))return;const t=e.target,d=t.dataset;
+app.addEventListener('change',e=>{if(!document.querySelector('[data-ptab]'))return;const t=e.target,d=t.dataset;
  if(d.st){fsOf(byUid(d.st)).st=t.value}
  if(d.imp){fsOf(byUid(d.imp)).imp=t.checked}
  if(d.eng){fsOf(byUid(d.eng)).eng=t.checked}
@@ -1169,10 +1187,52 @@ app.addEventListener('change',e=>{if(!document.querySelector('.seg'))return;cons
  if(t.id==='rit-def'){B.rit=B.rit||{};B.rit.defile=t.value}
  if(t.id==='rit-fav'){B.rit=B.rit||{};B.rit.fav=t.value}
  if(t.id==='rules-q')return;
- saveB();if(document.querySelector('.seg'))renderPlay()});
+ saveB();if(document.querySelector('[data-ptab]'))renderPlay()});
+
+
+/* ============================== PICKER ============================== */
+function pickReason(f,E){const T=FT[f.type],k=itemCount(E.n);
+ if(E.lim&&k>=E.lim)return `Gang limit reached (${k}/${E.lim})`;
+ if(E.rep&&G.rep<E.rep)return `Needs Rep ${E.rep} (gang has ${G.rep})`;
+ if(E.n==='Familiar'&&(f.items||[]).includes('Familiar'))return 'One Familiar per fighter';
+ if(E.n==='Cult Icon'&&k>=1)return 'One Cult Icon per gang';
+ return ''}
+function pickWarn(f,E){if(f.type==='mutant'&&!f.spec&&E.cat==='special')return 'Only a Mutant Specialist can use this';
+ if(f.type==='cultist'&&!f.spec&&['special','heavy'].includes(E.cat))return 'Only a Cultist Specialist can use this';
+ if(E.cat==='armour'&&(f.muts||[]).includes('Crooked Body'))return 'Crooked Body: can’t wear armour';return ''}
+function renderPick(){const f=byUid(UI.pick.uid),T=FT[f.type],kind=UI.pick.kind,nm=f.name||T.n,q=(UI.pickQ||'').trim().toLowerCase();const st=stats(f);
+ const have=kind==='equip'?(f.items||[]):(f.muts||[]);
+ let body='';
+ if(kind==='equip'){const cats=CATS.filter(([c])=>EQL.some(e=>e[2]===c&&e[3].includes(T.code)));const cur=cats.some(c=>c[0]===UI.pickCat)?UI.pickCat:'all';
+  const list=EQL.filter(e=>e[3].includes(T.code)&&(cur==='all'||e[2]===cur)).map(e=>EQ[e[0]]).filter(E=>!q||(E.n+' '+(EQD[E.n]||'')+' '+E.p.map(n=>WP[n]?WP[n][8]:'').join(' ')).toLowerCase().includes(q));
+  body=`<div class="seg" role="group" aria-label="Category"><button data-pcat="all" aria-pressed="${cur==='all'}">All</button>${cats.map(([c,l])=>`<button data-pcat="${c}" aria-pressed="${cur===c}">${l.replace(' weapons','').replace(' equipment','')}</button>`).join('')}</div>
+  <div class="pgrid">${list.map(E=>{const why=pickReason(f,E),warn=pickWarn(f,E),own=have.filter(x=>x===E.n).length,used=itemCount(E.n);
+   return `<article class="pc ${why?'off':''}"><div class="pch"><h3>${esc(E.n)}</h3><span class="big" style="font-size:1.1rem">${E.c}<small class="muted"> cr</small></span></div>
+   <div class="row">${E.lim?`<span class="pill">Gang 0-${E.lim} · ${used} taken</span>`:''}${E.rep?`<span class="pill ${G.rep<E.rep?'blood':''}">Rep ${E.rep}</span>`:''}${own?`<span class="pill brass">Carrying ${own}</span>`:''}${warn?`<span class="pill blood">${esc(warn)}</span>`:''}</div>
+   ${E.p.length?wtable(E.p.map(n=>[n,WP[n]])):''}${EQD[E.n]?`<p style="font-size:.9rem">${esc(EQD[E.n])}</p>`:''}
+   <div class="row" style="margin-top:auto"><button class="btn primary" data-padd="${esc(E.n)}" ${why?'disabled':''}>Add to ${esc(nm)}</button>${own?`<button class="btn" data-prm="${esc(E.n)}">Remove one</button>`:''}${why?`<span class="muted" style="font-size:.85rem">${esc(why)}</span>`:''}</div></article>`}).join('')||'<p class="muted">Nothing matches.</p>'}</div>`}
+ else{const list=MUTL.filter(m=>!q||(m[1]+' '+m[3]).toLowerCase().includes(q));const n=have.length;
+  body=`<p class="muted">${n} Mutation${n===1?'':'s'} against Toughness ${st.T}. More Mutations than Toughness turns the fighter into a Chaos Spawn.${G.founding&&T.mut[1]?` At recruitment this fighter takes ${T.mut[0]}–${T.mut[1]}.`:''}</p>
+  <div class="pgrid">${list.map(m=>{const own=have.includes(m[1]);const danger=!own&&n+1>st.T;
+   return `<article class="pc"><div class="pch"><h3>${esc(m[1])}</h3><span class="big" style="font-size:1.1rem">${m[2]}<small class="muted"> cr</small></span></div>
+   <div class="row"><span class="pill">D66 ${m[0]}</span>${own?'<span class="pill brass">Has this</span>':''}${danger?'<span class="pill blood">Would turn them into a Spawn</span>':''}</div>
+   <p style="font-size:.92rem">${esc(m[3])}</p>
+   <div class="row" style="margin-top:auto">${own?`<button class="btn" data-prm="${esc(m[1])}">Remove</button>`:`<button class="btn primary" data-padd="${esc(m[1])}">Add to ${esc(nm)}</button>`}</div></article>`}).join('')||'<p class="muted">Nothing matches.</p>'}</div>`}
+ app.innerHTML=`<div class="picker stack" style="gap:16px">
+  <div class="pickbar panel"><div class="row" style="justify-content:space-between"><div><span class="label">${kind==='equip'?'Equipment':'Mutations'} for</span><h2>${esc(nm)}</h2><p class="muted">${T.n} · <span class="num">${cost(f)}</span> credits · gang <span class="num">${gangCost()}</span>/${G.budget}</p></div><button class="btn primary" data-act="pickdone">Done</button></div>
+  <div class="chips">${have.map(n=>`<span class="chip">${esc(n)} <b>${kind==='equip'?(EQ[n]?.c??''):(MUTS[n]?.c??'')}</b><button aria-label="Remove ${esc(n)}" data-prm="${esc(n)}">×</button></span>`).join('')||`<span class="muted">${kind==='equip'?'Nothing equipped yet.':'No Mutations yet.'}</span>`}</div>
+  ${kind==='equip'?`<p class="muted" style="font-size:.85rem">${esc(T.equip)} All ranged weapons count as Scarce.</p>`:''}</div>
+  <input type="search" class="search" id="pick-q" placeholder="${kind==='equip'?'Search – e.g. chain, Blast, Rending':'Search – e.g. Wounds, armour'}" value="${esc(UI.pickQ||'')}" aria-label="Search">
+  ${body}</div>`}
+app.addEventListener('click',e=>{if(!document.querySelector('.picker'))return;const el=e.target.closest('button');if(!el)return;const d=el.dataset;const f=byUid(UI.pick.uid);const key=UI.pick.kind==='equip'?'items':'muts';
+ if(d.pcat){UI.pickCat=d.pcat;saveUI();renderPick();return}
+ if(d.padd){f[key]=(f[key]||[]).concat(d.padd);G.example=false;save();renderPick();toast(`${d.padd} added`);return}
+ if(d.prm){const i=(f[key]||[]).lastIndexOf(d.prm);if(i>-1)f[key].splice(i,1);save();renderPick();return}
+ if(d.act==='pickdone'){G.fighters.forEach(x=>x.open=x.uid===f.uid);save();UI.scrollTo=f.uid;saveUI();location.hash='#build'}});
+app.addEventListener('input',e=>{if(e.target.id!=='pick-q')return;UI.pickQ=e.target.value;saveUI();const pos=e.target.selectionStart;renderPick();const n=document.getElementById('pick-q');n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}});
 
 /* ============================== RULES ============================== */
-function renderRules(){const tbl=(heads,rows,cls='')=>`<div class="scroll"><table class="dt ${cls}"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+function rulesSections(){const tbl=(heads,rows,cls='')=>`<div class="scroll"><table class="dt ${cls}"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
  const rb=(t,body,wide)=>`<div class="rb ${wide?'wide':''}">${t?`<h3>${t}</h3>`:''}${body}</div>`;
  const ul=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join('')}</ul>`;
  const S=[];
@@ -1208,16 +1268,26 @@ function renderRules(){const tbl=(heads,rows,cls='')=>`<div class="scroll"><tabl
   rb('Chaos Cult exceptions',ul(['<strong>Amaranthine (Apostle):</strong> a Memorable Death passes to a random gang fighter as a Sacrifice; the Apostle takes Enfeebled and the Crooked Body Mutation. The Apostle can\u2019t be Captured.','<strong>Warp Denizen (Daemon):</strong> ignores all Lasting Injuries except Memorable Death.','<strong>Chaos Spawn:</strong> never suffers Lasting Injuries except Memorable Death.','<strong>Bleed the Captive:</strong> the captive rolls a Lasting Injury of 50+D6 (results 51–56).']))]]);
  S.push(['subplots','Sub-plots',[rb('Using sub-plots',ul(['Agree before the battle. Each player privately draws one card from a deck of playing cards.','A Joker is shown and discarded; draw two cards instead (repeat for more Jokers).','On completion reveal it, take the reward, and discard the card permanently.'])),
   ...Object.values(SP).map(s=>rb(`${s.sym} ${s.suit}: ${s.theme} <span class="pill">${s.reward}</span>`,tbl(['Card','Sub-plot','Condition and reward'],s.c.map((c,i)=>`<tr><td class="c">${RANKS[i]}</td><td><strong>${esc(c[0])}</strong></td><td>${esc(c[1])}</td></tr>`)),true))]]);
- app.innerHTML=`<div class="codex"><nav class="toc" aria-label="Contents">${S.map(([id,t])=>`<a href="#rules" data-jump="${id}">${t}</a>`).join('')}</nav>
- <div><input type="search" class="search" id="rules-q" placeholder="Search the rules – e.g. Frenzy, Scarce, Daemon" value="${esc(UI.rules||'')}" aria-label="Search rules"><div style="height:18px"></div>
- ${S.map(([id,t,blocks])=>`<section class="csec" id="sec-${id}"><h2>${t}</h2>${blocks.join('')}</section>`).join('')}<p class="muted" id="noresults" hidden>Nothing matches that search.</p></div></div>`;
- filterRules()}
+ return S}
+const RBLURB={gang:'Founding, Chaos Cult rules, Brutes and Hangers-On',fighters:'Profiles, marks, skills and special rules',equipment:'Who can take what, limits and Rep',armoury:'Weapon profiles, armour and wargear',mutations:'The D66 Mutation table',wyrd:'The Aetheric Discipline',skills:'Skill access, Heresy and god skills',dedication:'Your god, its Mark and Daemon Rep',articles:'Delusion Dice and every Path of Damnation',rituals:'Dark Ritual and favours',injuries:'Lasting Injuries and fighter status',subplots:'The four suits of secret missions'};
+let RS=null;
+function renderRules(sub){RS=rulesSections();const sec=RS.find(x=>x[0]===sub);
+ if(sec){const i=RS.indexOf(sec),prev=RS[i-1],next=RS[i+1];
+  app.innerHTML=`<div class="codex"><nav class="toc" aria-label="Rules sections"><a href="#rules">← All rules</a>${RS.map(([id,t])=>`<a href="#rules-${id}" ${id===sub?'aria-current="page"':''}>${t}</a>`).join('')}</nav>
+  <div><p class="crumbs"><a href="#rules">Rules</a> / ${sec[1]}</p><section class="csec" id="sec-${sec[0]}" style="border:0"><h2>${sec[1]}</h2>${sec[2].join('')}</section>
+  <div class="row" style="justify-content:space-between">${prev?`<a class="btn" href="#rules-${prev[0]}">← ${prev[1]}</a>`:'<span></span>'}${next?`<a class="btn" href="#rules-${next[0]}">${next[1]} →</a>`:''}</div></div></div>`;return}
+ app.innerHTML=`<div class="stack" style="gap:16px"><div><h2>Rules</h2><p class="muted">${esc(D().title)} · ${PATHS[G.path].n}. Pick a section, or search everything.</p></div>
+ <input type="search" class="search" id="rules-q" placeholder="Search the rules – e.g. Frenzy, Scarce, Daemon" value="${esc(UI.rules||'')}" aria-label="Search rules">
+ <div id="rules-body"></div></div>`;rulesBody()}
+function rulesBody(){const b=document.getElementById('rules-body');if(!b)return;const q=(UI.rules||'').trim();
+ if(!q){b.innerHTML=`<div class="rtiles">${RS.map(([id,t])=>`<a class="rtile" href="#rules-${id}"><strong>${t}</strong><span>${RBLURB[id]||''}</span></a>`).join('')}</div>`;return}
+ b.innerHTML=RS.map(([id,t,blocks])=>`<section class="csec" id="sec-${id}"><h2><a href="#rules-${id}" style="color:inherit;text-decoration:none">${t} →</a></h2>${blocks.join('')}</section>`).join('')+'<p class="muted" id="noresults" hidden>Nothing matches that search.</p>';filterRules()}
 function filterRules(){const q=(UI.rules||'').trim().toLowerCase();let any=false;document.querySelectorAll('.csec').forEach(sec=>{let vis=false;
  sec.querySelectorAll('.rb').forEach(b=>{let show=!q||b.textContent.toLowerCase().includes(q);
   if(q&&show){b.querySelectorAll('tbody tr').forEach(tr=>tr.classList.toggle('hidden-by-search',!tr.textContent.toLowerCase().includes(q)&&!tr.classList.contains('grp')&&!b.querySelector('h3')?.textContent.toLowerCase().includes(q)))}else b.querySelectorAll('tbody tr').forEach(tr=>tr.classList.remove('hidden-by-search'));
   b.classList.toggle('hidden-by-search',!show);if(show)vis=true});sec.classList.toggle('hidden-by-search',!vis);if(vis)any=true});
  const nr=document.getElementById('noresults');if(nr)nr.hidden=any}
-app.addEventListener('input',e=>{if(e.target.id==='rules-q'){UI.rules=e.target.value;saveUI();filterRules()}});
+app.addEventListener('input',e=>{if(e.target.id==='rules-q'){UI.rules=e.target.value;saveUI();rulesBody()}});
 app.addEventListener('click',e=>{const a=e.target.closest('[data-jump]');if(!a)return;e.preventDefault();document.getElementById('sec-'+a.dataset.jump)?.scrollIntoView({behavior:'smooth',block:'start'})});
 
 /* Easter egg: Scrunt Nathan */
