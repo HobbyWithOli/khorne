@@ -192,6 +192,8 @@ textarea{width:100%;font-family:var(--mono);font-size:.78rem}
 .search{width:100%;font-size:1rem;padding:10px 12px}
 .hidden-by-search{display:none!important}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:999px;font-weight:700;z-index:50;font-size:.9rem}
+@keyframes quake{0%,100%{transform:none}20%{transform:translate(-3px,1px) rotate(-2deg)}40%{transform:translate(3px,-1px) rotate(2deg)}60%{transform:translate(-2px,0) rotate(-1deg)}80%{transform:translate(2px,1px) rotate(1deg)}}
+.brand h1{cursor:default;user-select:none}.brand h1.quake{animation:quake .3s 3}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -228,7 +230,9 @@ acolyte:{n:'Acolyte',role:'Juve',cost:20,max:99,code:'J',st:[6,5,5,3,3,1,4,2,9,8
 ogryn:{n:'Corrupted Ogryn',role:'Brute',cost:210,max:1,code:'',st:[5,3,5,5,5,3,4,3,7,6,8,9],brute:1,mut:[0,2],P:['Brawn','Ferocity','Savagery'],S:['Combat','Mutation'],rules:['Juggernaut','Murderous Brute','Slow-Witted'],equip:'Two Open Fists by default. Options below.'},
 daemon:{n:'Daemon',role:'Brute',cost:250,max:1,code:'',st:[6,3,4,4,4,3,4,3,9,4,6,7],mark:1,brute:1,rep:8,mut:[0,0],P:['Combat','Ferocity','Savagery'],S:['Brawn','Mutation'],rules:['Immaterial Member','Juggernaut','Terrifying','Incorporeal','Instability','Warp Denizen','Manifestation of Chaos','Mark of Chaos'],equip:'Vorpal Claws and Warpfire Breath.'},
 };
-const ORDER=['apostle','disciple','sorcerer','mutantlord','mutant','chosen','cultist','acolyte','ogryn','daemon'];
+FT.scrunt={n:'Scrunt Nathan',role:'Legend',cost:88,max:1,code:'',st:[8,2,6,4,4,2,2,4,8,2,10,10],mut:[0,0],P:['Ferocity','Savagery'],S:['Cunning'],rules:['Scrunt Happens','Eight-Fold Grudge','Absolutely Not a Chaos Spawn'],equip:'Fights with whatever is nearest: always counts as armed with a Two-Handed Hammer and a Stub Gun.',secret:1};
+const ALLORDER=['apostle','disciple','sorcerer','mutantlord','mutant','chosen','cultist','acolyte','ogryn','daemon','scrunt'];
+const ORDERF=()=>ALLORDER.filter(t=>t!=='scrunt'||G.scrunt);
 
 const RULES={
 'Gang Leader':`A gang must always include one. This fighter may not retire. If they die or are lost, another fighter is promoted and gains this rule.`,
@@ -270,6 +274,9 @@ const RULES={
 'Warp Denizen':`Ignores all Lasting Injuries except Memorable Death.`,
 'Manifestation of Chaos':`On recruitment, generate 2 random skills from its Primary skill sets.`,
 'Mark of Chaos':`Gains the Gang Leader's Mark: the Mark of Khorne.`,
+'Scrunt Happens':`Once per battle, Scrunt Nathan may change any one dice roll – his or anyone else's – to an 8. If that's impossible on the dice, it becomes a 6 and he sulks for the rest of the round (no actions).`,
+'Eight-Fold Grudge':`Hatred (everyone). Must re-roll failed wound rolls in melee against literally anybody. He's had a long week.`,
+'Absolutely Not a Chaos Spawn':`Can never gain Mutations, can't be Captured, and if anything would turn him into a Chaos Spawn, he refuses. Nobody argues.`,
 'Mark of Khorne':`Martial: +1 WS, +2 Cool. Frenzied: −2 BS. Eternal Rivalry: Hatred (Mark of Slaanesh) – must re-roll failed wound rolls in melee against fighters with the Mark of Slaanesh.`,
 'Clamber':`Climbing costs no extra movement; every vertical surface counts as a ladder.`,
 'Omen of Fortune':`Once per game, if its owner is within 3", the owner checks Willpower before the enemy rolls to wound one successful hit. If passed, that attack misses.`,
@@ -713,6 +720,7 @@ function itemCount(n){let k=0;G.fighters.forEach(f=>(f.items||[]).forEach(i=>{if
 function weaponsOf(f){const out=[];
  if(f.type==='ogryn'){(f.hands||['Open Fist','Open Fist']).forEach(h=>out.push([h,WP[h]]))}
  if(f.type==='daemon'){out.push(['Vorpal Claws',WP['Vorpal Claws']],['Warpfire Breath',WP['Warpfire Breath']])}
+ if(f.type==='scrunt'){out.push(['Two-Handed Hammer',WP['Two-Handed Hammer']],['Stub Gun',WP['Stub Gun']])}
  (f.items||[]).forEach(n=>{const e=EQ[n];if(e&&e.p&&e.p.length)e.p.forEach(p=>out.push([p,WP[p]]))});
  const seen=new Set();return out.filter(([n])=>{if(n==='Polearm'&&seen.has(n))return false;seen.add(n);return true})}
 function gearOf(f){return (f.items||[]).filter(n=>EQ[n]&&!(EQ[n].p&&EQ[n].p.length))}
@@ -727,7 +735,7 @@ function validate(){const I=[];const fs=G.fighters;const cnt=t=>fs.filter(f=>f.t
  const hier=fs.filter(f=>FT[f.type].hier).length,gf=fs.filter(f=>FT[f.type].gf).length,champs=fs.filter(f=>FT[f.type].champ).length;
  if(hier>gf)I.push(['err',`Leader and Champions (${hier}) outnumber Gang Fighters (${gf}).`]);
  if(G.founding&&champs>2)I.push(['err',`Only 2 Champions at founding (you have ${champs}).`]);
- ORDER.forEach(t=>{const T=FT[t];if(T.max<99&&cnt(t)>T.max)I.push(['err',`${T.n}: limit ${T.max} (you have ${cnt(t)}).`])});
+ ALLORDER.forEach(t=>{const T=FT[t];if(T.max<99&&cnt(t)>T.max)I.push(['err',`${T.n}: limit ${T.max} (you have ${cnt(t)}).`])});
  const total=gangCost();if(total>G.budget)I.push(['err',`Over budget by ${total-G.budget} credits.`]);
  if(G.founding){const spec=fs.filter(f=>f.spec).length;if(spec>1)I.push(['err',`Only one Specialist at founding (you have ${spec}).`])}
  if(cnt('daemon')){if(G.founding)I.push(['err','The Daemon cannot be recruited at gang creation.']);if(G.rep<8)I.push(['err','A Khorne Daemon needs 8 Rep.'])}
@@ -777,7 +785,7 @@ function renderBuild(){const total=gangCost(),I=validate(),pct=Math.min(100,tota
   </section>
   <section class="panel stack" aria-label="Recruit">
    <span class="label">Recruit</span>
-   <div class="addgrid">${ORDER.map(t=>{const T=FT[t],c=counts[t]||0,full=T.max<99&&c>=T.max;return `<button class="btn" data-add="${t}" ${full?'disabled':''}><strong>${T.n}</strong><span>${T.cost} cr · ${T.role}${T.max<99?' · '+c+'/'+T.max:''}</span></button>`}).join('')}</div>
+   <div class="addgrid">${ORDERF().map(t=>{const T=FT[t],c=counts[t]||0,full=T.max<99&&c>=T.max;return `<button class="btn" data-add="${t}" ${full?'disabled':''}><strong>${T.n}</strong><span>${T.cost} cr · ${T.role}${T.max<99?' · '+c+'/'+T.max:''}</span></button>`}).join('')}</div>
   </section>
   <section class="panel stack" aria-label="Roster tools">
    <span class="label">Roster</span>
@@ -1036,7 +1044,7 @@ function renderRules(){const tbl=(heads,rows,cls='')=>`<div class="scroll"><tabl
   rb('Chaos Cult rules',ul(['<strong>Limited Supply:</strong> every ranged weapon a Chaos Cult fighter uses counts as Scarce. Restricted items can’t be bought until their limits and Rep are met.','<strong>Outcast:</strong> Trading Post Rarity +2 on everything, plus a 25% handling charge on the total.','<strong>Ostracised:</strong> restricted Brutes and Hangers-On. Always Outlaw; can’t change Alignment.','<strong>Infernal Pacts:</strong> on activation, a fighter with Blaze and/or Insane may remove them, then suffers D2 Flesh Wounds at the end of the activation.','<strong>Vows of the Void:</strong> choose an Unholy Dedication and then a Path of Damnation at founding.'])),
   rb('Brutes and Hangers-On',`<p>Total allowed by Reputation: 0–5 Rep: 1 · 5–9: 2 · 10–14: 3 · 15–19: 4 · 20–24: 5 · +1 per further 5 Rep.</p>`+ul(['<strong>Brutes:</strong> Corrupted Ogryn, Daemon, Iron Automata, Awakened Ogryn, Outlands Beastmaster, Sump Beast.','<strong>Hangers-On:</strong> Agitator, Cadaver Merchant, Chem Dealer, Heretek (no starting weapons or armour; Cultist Specialist equipment access), Propagandist, Rogue Doc, Scabber.','The book also says they “may never use Articles of Damnation” – most likely meaning hired Brutes and Hangers-On can’t invoke Articles.'])),
  ]]);
- S.push(['fighters','Fighters',ORDER.map(t=>{const T=FT[t],b=baseStats(t),k=stats({type:t,muts:[]});const rules=T.rules.slice();if(T.mark)rules.push('Mark of Khorne');
+ S.push(['fighters','Fighters',ORDERF().map(t=>{const T=FT[t],b=baseStats(t),k=stats({type:t,muts:[]});const rules=T.rules.slice();if(T.mark)rules.push('Mark of Khorne');
   return rb(`${T.n} <span class="pill">${T.role} · ${T.cost} cr${T.max<99?' · 0-'+T.max:''}</span>`,`${statTable(b)}${T.mark?`<p class="label">With Mark of Khorne</p>${statTable(k,b)}`:''}<p style="font-size:.9rem">${esc(T.equip)}</p><p style="font-size:.9rem"><strong>Primary:</strong> ${T.P.join(', ')} · <strong>Secondary:</strong> ${T.S.join(', ')}</p>${t==='daemon'?wtable([['Vorpal Claws',WP['Vorpal Claws']],['Warpfire Breath',WP['Warpfire Breath']]]):''}${t==='ogryn'?wtable(['Open Fist','Power Maul','Horrific Appendages'].map(n=>[n,WP[n]])):''}<div class="stack" style="gap:4px">${rules.map(n=>`<p style="font-size:.9rem"><strong>${esc(n)}:</strong> ${esc(RULES[n])}</p>`).join('')}</div>`)}).concat([
   rb('Familiar <span class="pill">Exotic Beast · 65 cr on the lists · 0-3</span>',`<p style="font-size:.9rem">${esc(EQD.Familiar)} Max 1 per fighter. No equipment, unarmed attacks only.</p>${['Clamber','Omen of Fortune','Precognition'].map(n=>`<p style="font-size:.9rem"><strong>${n}:</strong> ${esc(RULES[n])}</p>`).join('')}`),
   rb('Chaos Spawn <span class="pill">Unique</span>',`<p style="font-size:.9rem">Gained only when a fighter transforms. Free; adds 130 to Gang Rating. M D3+3". Roll a D6 per X: 1 – WS4+ S3 T4 W1 I5+ A1 (32mm); 2–5 – WS4+ S4 T5 W2 I4+ A2 (40/50mm); 6 – WS3+ S5 T6 W3 I3+ A3 (60mm).</p>`+ul(['<strong>Lost and Damned:</strong> the old fighter is removed; weapons go to the Stash, equipment is lost. The Spawn sits outside the gang structure.','<strong>Mindless Beast:</strong> only Move, Charge, Fight and Coup de Grace.','<strong>Warped Monstrosity:</strong> never Pinned or Broken, immune to Insane, auto-passes Cool and Willpower, auto-fails Leadership and Intelligence. Flesh Wound = No Effect, Serious Injury = Flesh Wound. Only Memorable Death as Lasting Injury.','<strong>Restraining the Spawn:</strong> after a battle, nominate 0–3 Gangers or Juves who weren’t OOA or SI; roll a D6 each. Any 4+ restrains it, otherwise it escapes. A 1 gives that fighter a Lasting Injury.'])),
@@ -1071,6 +1079,10 @@ function filterRules(){const q=(UI.rules||'').trim().toLowerCase();let any=false
 app.addEventListener('input',e=>{if(e.target.id==='rules-q'){UI.rules=e.target.value;saveUI();filterRules()}});
 app.addEventListener('click',e=>{const a=e.target.closest('[data-jump]');if(!a)return;e.preventDefault();document.getElementById('sec-'+a.dataset.jump)?.scrollIntoView({behavior:'smooth',block:'start'})});
 
+/* Easter egg: Scrunt Nathan */
+function unlockScrunt(){if(G.scrunt)return;G.scrunt=true;save();const h=document.querySelector('.brand h1');h.classList.add('quake');setTimeout(()=>h.classList.remove('quake'),900);toast('Blood for the Blood God! Scrunt Nathan answers the call.');route()}
+(()=>{let n=0,t=0;document.querySelector('.brand h1').addEventListener('click',()=>{const now=Date.now();n=now-t<1500?n+1:1;t=now;if(n>=8){n=0;unlockScrunt()}})})();
+app.addEventListener('input',e=>{if(e.target.dataset&&e.target.dataset.name&&/^\s*scrunt\s+nathan\s*$/i.test(e.target.value))unlockScrunt()});
 /* skill datalist */
 document.body.insertAdjacentHTML('beforeend',`<datalist id="skilllist">${[...HERESY,...SAVAGERY].map(s=>`<option value="${esc(s[0])}">`).join('')}</datalist>`);
 route();
