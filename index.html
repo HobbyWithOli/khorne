@@ -197,7 +197,7 @@ textarea{width:100%;font-family:var(--mono);font-size:.78rem}
 .hidden-by-search{display:none!important}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:999px;font-weight:700;z-index:50;font-size:.9rem}
 @keyframes quake{0%,100%{transform:none}20%{transform:translate(-3px,1px) rotate(-2deg)}40%{transform:translate(3px,-1px) rotate(2deg)}60%{transform:translate(-2px,0) rotate(-1deg)}80%{transform:translate(2px,1px) rotate(1deg)}}
-.brand h1{cursor:default;user-select:none}.brand h1.quake{animation:quake .3s 3}
+.brand h1{cursor:default;user-select:none}.brand h1.quake,.addgrid .quake{animation:quake .3s 3}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -236,7 +236,8 @@ daemon:{n:'Daemon',role:'Brute',cost:250,max:1,code:'',st:[6,3,4,4,4,3,4,3,9,4,6
 };
 FT.scrunt={n:'Scrunt Nathan',role:'Wretch',cost:1,max:1,code:'',st:[3,6,6,1,1,1,6,1,12,12,12,12],mut:[0,0],P:['Nothing'],S:['Nothing'],rules:['Snivelling Coward','Beneath Contempt','Grovel','Scrunt Happens','Faithless','Ritual Fodder','Absolutely Not a Chaos Spawn'],equip:'Armed with a Sharpened Spoon. Cannot be given any other weapons or equipment; he drops them.',secret:1};
 const ALLORDER=['apostle','disciple','sorcerer','mutantlord','mutant','chosen','cultist','acolyte','ogryn','daemon','scrunt'];
-const ORDERF=()=>ALLORDER.filter(t=>t!=='scrunt'||G.scrunt);
+const scruntOn=()=>!!(G.scrunt||LS.get('ss-scrunt',false));
+const ORDERF=()=>ALLORDER.filter(t=>t!=='scrunt'||scruntOn());
 
 const RULES={
 'Gang Leader':`A gang must always include one. This fighter may not retire. If they die or are lost, another fighter is promoted and gains this rule.`,
@@ -1162,7 +1163,11 @@ app.addEventListener('input',e=>{if(e.target.id==='rules-q'){UI.rules=e.target.v
 app.addEventListener('click',e=>{const a=e.target.closest('[data-jump]');if(!a)return;e.preventDefault();document.getElementById('sec-'+a.dataset.jump)?.scrollIntoView({behavior:'smooth',block:'start'})});
 
 /* Easter egg: Scrunt Nathan */
-function unlockScrunt(){if(G.scrunt)return;G.scrunt=true;save();const h=document.querySelector('.brand h1');h.classList.add('quake');setTimeout(()=>h.classList.remove('quake'),900);toast('The Dark Gods sigh. Scrunt Nathan has crawled out from under a pipe.');route()}
+const SCRUNT_LINES=['The Dark Gods sigh. Scrunt Nathan has crawled out from under a pipe.','Scrunt Nathan is here. Nobody asked.','Scrunt Nathan offers you a sharpened spoon. Decline it.','Scrunt Nathan apologises for existing.','Somewhere, Scrunt Nathan is losing a fight with a door.','Scrunt Nathan has been found. Again. Unfortunately.'];
+let scruntN=0;
+function unlockScrunt(){const first=!scruntOn();G.scrunt=true;save();LS.set('ss-scrunt',true);const h=document.querySelector('.brand h1');h.classList.remove('quake');void h.offsetWidth;h.classList.add('quake');setTimeout(()=>h.classList.remove('quake'),900);
+ toast(first?SCRUNT_LINES[0]:SCRUNT_LINES[1+(scruntN++%(SCRUNT_LINES.length-1))]);route();
+ if((location.hash||'#build')==='#build')requestAnimationFrame(()=>{const b=document.querySelector('[data-add="scrunt"]');if(b){b.scrollIntoView({block:'center',behavior:'smooth'});b.classList.add('quake');setTimeout(()=>b.classList.remove('quake'),900)}})}
 (()=>{let n=0,t=0;document.querySelector('.brand h1').addEventListener('click',()=>{const now=Date.now();n=now-t<1500?n+1:1;t=now;if(n>=8){n=0;unlockScrunt()}})})();
 app.addEventListener('input',e=>{if(e.target.dataset&&e.target.dataset.name&&/^\s*scrunt\s+nathan\s*$/i.test(e.target.value))unlockScrunt()});
 /* skill datalist */
