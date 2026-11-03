@@ -225,6 +225,7 @@ a.btn{text-decoration:none;color:var(--fg);display:inline-block}
 .artrow .an{flex:1;min-width:0;font-weight:700;font-style:italic}
 .artrow p{padding:0 10px 8px;font-size:.86rem}.artrow p.f{color:var(--muted)}
 .artrow.used{opacity:.55}
+.artref td{vertical-align:top}.artref .thr{font-family:var(--mono);font-weight:600;color:var(--blood)}.artref td:nth-child(2){min-width:140px;font-style:italic}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -1071,8 +1072,7 @@ function renderPlay(){const tab=UI.play||'battle';
   ${tab==='battle'?playBattle():tab==='pre'?playPre():playSheet()}
  </div>`}
 
-function playBattle(){const ep=endPhaseInfo();const arts=pathArts(G.path);const sel=B.art&&arts.find(a=>a.id===B.art)?B.art:arts[0].id;const A=arts.find(a=>a.id===sel);
- const nDice=Math.min(B.useN||2,B.pool)||0;
+function playBattle(){const ep=endPhaseInfo();const arts=pathArts(G.path);
  return `<section class="hud">
    <div class="panel stack"><span class="label">Round</span><div class="counter"><button class="step" data-b="round-" aria-label="Previous round">−</button><span class="big">${B.round}</span><button class="step" data-b="round+" aria-label="Next round">+</button></div></div>
    <div class="panel stack"><span class="label">Delusion Dice pool</span><div class="counter"><button class="step" data-b="pool-" aria-label="Remove a die">−</button><span class="pool num">${B.pool}</span><button class="step" data-b="pool+" aria-label="Add a die">+</button></div></div>
@@ -1083,14 +1083,13 @@ function playBattle(){const ep=endPhaseInfo();const arts=pathArts(G.path);const 
      ${B.last&&B.last.kind==='end'?`<div class="result"><div class="dice">${B.last.dice.map(v=>`<span class="die ${v>=B.last.thr?'hit':''}">${v}</span>`).join('')}</div><p><strong>+${B.last.gain}</strong> Delusion Dice. Impassioned cleared.</p></div>`:''}
    </div>
  </section>
- <section class="panel stack" aria-label="Invoke an Article">
-  <div class="row" style="justify-content:space-between"><h3>Invoke an Article of Damnation</h3><span class="pill blood">${esc(xpShort())}</span></div>
-  <p class="muted" style="font-size:.88rem">Declare at the start of the fighter's activation. Sorcerers can't invoke Articles. Committed dice are lost either way; a passed Article can't be invoked again this round.</p>
-  <div class="row"><select id="b-art" aria-label="Article">${arts.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''} ${B.used[a.id]?'disabled':''}>(${a.num}) ${esc(a.n)} – ${a.t}+${B.used[a.id]?' · used':''}</option>`).join('')}</select>
-   <span class="check">Commit <button class="step" data-b="n-">−</button><span class="big" style="font-size:1.2rem">${nDice}</span><button class="step" data-b="n+">+</button> dice</span>
-   <button class="btn primary" data-b="invoke" ${!B.pool||!nDice||B.used[sel]?'disabled':''}>Roll Threshold test</button></div>
-  ${A?`<div class="art"><h4>(${A.num}) “${esc(A.n)}” <span class="thr">${A.t}+</span></h4><p><strong>Passed:</strong> ${esc(A.pass)}</p><p class="f"><strong>Failed:</strong> ${esc(A.fail)}</p></div>`:''}
-  ${B.last&&B.last.kind==='art'?`<div class="result ${B.last.pass?'pass':'fail'}"><div class="dice">${B.last.dice.map(v=>`<span class="die hit">${v}</span>`).join('')}</div><p><strong>${B.last.total}</strong> vs ${B.last.t}+ – <strong>${B.last.pass?'Passed':'Failed'}</strong>: ${esc(B.last.pass?B.last.passT:B.last.failT)}</p>${xpBonus(B.last.dice,B.last.total)?`<p class="pill blood">${esc(xpBonus(B.last.dice,B.last.total))}</p>`:''}</div>`:''}
+ <section class="panel stack" aria-label="Articles of Damnation">
+  <div class="row" style="justify-content:space-between"><h3>Articles of Damnation</h3><span class="pill blood">${esc(xpShort())}</span></div>
+  <p class="muted" style="font-size:.88rem">Declare at the start of an activation, commit dice, roll the Threshold or more to pass.</p>
+  <div class="pgrid">${arts.map(a=>`<article class="pc"><div class="pch"><h3>${esc(a.n)}</h3><span class="big" style="font-size:1.1rem;color:var(--blood);white-space:nowrap">${a.t}+</span></div>
+   <div class="row"><span class="pill">Article ${a.num}</span>${a.id[0]==='c'?'<span class="pill brass">Any Path</span>':''}</div>
+   <p style="font-size:.92rem"><strong>Pass:</strong> ${esc(a.pass)}</p>
+   <p class="muted" style="font-size:.88rem;margin-top:auto"><strong>Fail:</strong> ${esc(a.fail)}</p></article>`).join('')}</div>
  </section>
  <section class="stack" aria-label="Fighters"><div class="row" style="justify-content:space-between"><h3>Fighters</h3><span class="muted" style="font-size:.88rem">Toughness drops by 1 per Flesh Wound; at Flesh Wounds equal to Toughness the fighter goes Out of Action.</span></div>
  <div class="tk">${alive().map(trackCard).join('')||'<p class="muted">Build a gang first.</p>'}</div></section>`}
