@@ -1,6 +1,6 @@
-# Skin and Sinew
+# Eightfold Path
 
-Gang builder, battle tracker and searchable rules for a Khorne-dedicated Chaos Cult gang in Necromunda, based on *The Eightfold Path* homebrew list by Berith Degustan (personal use).
+Gang builder, battle tracker and searchable rules for a Chaos Cult gang – Khorne, Nurgle, Tzeentch, Slaanesh or Chaos Undivided – in Necromunda, based on *The Eightfold Path* homebrew list by Berith Degustan (personal use).
 
 ## Pages
 - **Gang** – recruit fighters, equipment, Mutations, Wyrd Powers and skills, with costs and legality checks.

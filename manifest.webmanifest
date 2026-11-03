@@ -1,7 +1,7 @@
 {
-  "name": "Skin and Sinew",
-  "short_name": "Skin & Sinew",
-  "description": "Khorne Chaos Cult gang builder, battle tracker and rules for Necromunda.",
+  "name": "Eightfold Path",
+  "short_name": "Eightfold Path",
+  "description": "Chaos Cult gang builder, battle tracker and rules for Necromunda.",
   "start_url": "./#build",
   "scope": "./",
   "display": "standalone",
