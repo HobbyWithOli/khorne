@@ -1093,9 +1093,7 @@ function playBattle(){const ep=endPhaseInfo();const arts=pathArts(G.path);const 
   ${B.last&&B.last.kind==='art'?`<div class="result ${B.last.pass?'pass':'fail'}"><div class="dice">${B.last.dice.map(v=>`<span class="die hit">${v}</span>`).join('')}</div><p><strong>${B.last.total}</strong> vs ${B.last.t}+ – <strong>${B.last.pass?'Passed':'Failed'}</strong>: ${esc(B.last.pass?B.last.passT:B.last.failT)}</p>${xpBonus(B.last.dice,B.last.total)?`<p class="pill blood">${esc(xpBonus(B.last.dice,B.last.total))}</p>`:''}</div>`:''}
  </section>
  <section class="stack" aria-label="Fighters"><div class="row" style="justify-content:space-between"><h3>Fighters</h3><span class="muted" style="font-size:.88rem">Toughness drops by 1 per Flesh Wound; at Flesh Wounds equal to Toughness the fighter goes Out of Action.</span></div>
- <div class="tk">${alive().map(trackCard).join('')||'<p class="muted">Build a gang first.</p>'}</div></section>
- <details class="rd artsbox" id="arts-all" ${UI.artsOpen?'open':''}><summary><span>All Articles – ${PATHS[G.path].n}</span><span class="muted" style="font-weight:500">${arts.length} · ${arts.filter(a=>B.used[a.id]).length} used this round</span></summary><div class="t stack" style="gap:6px"><p class="muted" style="font-size:.85rem">${esc(PATHS[G.path].benefit)}</p>
- <div class="artlist">${arts.map(a=>`<details class="artrow ${B.used[a.id]?'used':''}"><summary><span class="thr">${a.t}+</span><span class="an">(${a.num}) ${esc(a.n)}</span>${B.used[a.id]?'<span class="pill">used</span>':''}</summary><p><strong>Pass:</strong> ${esc(a.pass)}</p><p class="f"><strong>Fail:</strong> ${esc(a.fail)}</p></details>`).join('')}</div></div></details>`}
+ <div class="tk">${alive().map(trackCard).join('')||'<p class="muted">Build a gang first.</p>'}</div></section>`}
 
 function trackCard(f){const T=FT[f.type],s=fsOf(f),st=stats(f);const hurt={};if(s.fw)hurt.T=Math.max(0,st.T-s.fw);
  const rules=T.rules.slice();if(T.mark)rules.push(markName());const g=gearOf(f);
