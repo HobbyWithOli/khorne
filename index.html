@@ -216,6 +216,15 @@ textarea{width:100%;font-family:var(--mono);font-size:.78rem}
 a.btn{text-decoration:none;color:var(--fg);display:inline-block}
 .cog{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--muted);cursor:pointer;transition:transform .3s}
 .cog:hover,.cog.on{color:var(--blood);border-color:var(--blood)}.cog.on{transform:rotate(60deg)}
+.artsbox>summary{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:1rem;padding:10px 12px}
+.artlist{display:flex;flex-direction:column;gap:4px}
+.artrow{border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.artrow summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:7px 10px;font-size:.9rem}
+.artrow summary::-webkit-details-marker{display:none}
+.artrow .thr{font-family:var(--mono);font-weight:600;color:var(--blood);min-width:3ch}
+.artrow .an{flex:1;min-width:0;font-weight:700;font-style:italic}
+.artrow p{padding:0 10px 8px;font-size:.86rem}.artrow p.f{color:var(--muted)}
+.artrow.used{opacity:.55}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -1085,7 +1094,8 @@ function playBattle(){const ep=endPhaseInfo();const arts=pathArts(G.path);const 
  </section>
  <section class="stack" aria-label="Fighters"><div class="row" style="justify-content:space-between"><h3>Fighters</h3><span class="muted" style="font-size:.88rem">Toughness drops by 1 per Flesh Wound; at Flesh Wounds equal to Toughness the fighter goes Out of Action.</span></div>
  <div class="tk">${alive().map(trackCard).join('')||'<p class="muted">Build a gang first.</p>'}</div></section>
- <section class="stack"><h3>Articles – ${PATHS[G.path].n}</h3><p class="muted">${esc(PATHS[G.path].benefit)}</p><div class="arts">${arts.map(a=>`<div class="art ${B.used[a.id]?'used':''}"><h4>(${a.num}) “${esc(a.n)}” <span class="thr">${a.t}+</span></h4><p>${esc(a.pass)}</p><p class="f">Fail: ${esc(a.fail)}</p></div>`).join('')}</div></section>`}
+ <details class="rd artsbox" id="arts-all" ${UI.artsOpen?'open':''}><summary><span>All Articles – ${PATHS[G.path].n}</span><span class="muted" style="font-weight:500">${arts.length} · ${arts.filter(a=>B.used[a.id]).length} used this round</span></summary><div class="t stack" style="gap:6px"><p class="muted" style="font-size:.85rem">${esc(PATHS[G.path].benefit)}</p>
+ <div class="artlist">${arts.map(a=>`<details class="artrow ${B.used[a.id]?'used':''}"><summary><span class="thr">${a.t}+</span><span class="an">(${a.num}) ${esc(a.n)}</span>${B.used[a.id]?'<span class="pill">used</span>':''}</summary><p><strong>Pass:</strong> ${esc(a.pass)}</p><p class="f"><strong>Fail:</strong> ${esc(a.fail)}</p></details>`).join('')}</div></div></details>`}
 
 function trackCard(f){const T=FT[f.type],s=fsOf(f),st=stats(f);const hurt={};if(s.fw)hurt.T=Math.max(0,st.T-s.fw);
  const rules=T.rules.slice();if(T.mark)rules.push(markName());const g=gearOf(f);
@@ -1179,6 +1189,7 @@ app.addEventListener('click',e=>{if(!document.querySelector('[data-ptab]'))retur
 function draw(n){const all=[];Object.keys(SP).forEach(s=>RANKS.forEach(r=>all.push(s+'-'+r)));all.push('JK-1','JK-2');
  for(let i=0;i<n;i++){const avail=all.filter(c=>!DK.removed.includes(c)&&!DK.hand.includes(c)&&!(DK.jok||[]).includes(c));if(!avail.length){DK.note='The deck is empty.';return}
   const c=avail[Math.floor(Math.random()*avail.length)];if(c.startsWith('JK')){DK.jok=(DK.jok||[]).concat(c);DK.note='Joker! Show it to your opponent and discard it. Drawing two more…';draw(2);DK.jok=[];continue}DK.hand.push(c)}}
+app.addEventListener('toggle',e=>{if(e.target.id==='arts-all'){UI.artsOpen=e.target.open;saveUI()}},true);
 app.addEventListener('change',e=>{if(!document.querySelector('[data-ptab]'))return;const t=e.target,d=t.dataset;
  if(d.st){fsOf(byUid(d.st)).st=t.value}
  if(d.imp){fsOf(byUid(d.imp)).imp=t.checked}
