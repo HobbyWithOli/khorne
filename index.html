@@ -214,6 +214,8 @@ textarea{width:100%;font-family:var(--mono);font-size:.78rem}
 .toc a[aria-current="page"]{background:var(--blood-soft);color:var(--blood);font-weight:700}
 .crumbs{font-size:.88rem;color:var(--muted)}.crumbs a{color:var(--muted)}
 a.btn{text-decoration:none;color:var(--fg);display:inline-block}
+.cog{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--muted);cursor:pointer;transition:transform .3s}
+.cog:hover,.cog.on{color:var(--blood);border-color:var(--blood)}.cog.on{transform:rotate(60deg)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -897,6 +899,7 @@ function renderBuild(){const total=gangCost(),I=validate(),pct=Math.min(100,tota
  app.innerHTML=`<div class="builder">
  <aside class="rail">
   <section class="panel stack" aria-label="Gang settings">
+   <div class="row" style="justify-content:space-between"><span class="label">Gang</span><button class="cog ${UI.cog?'on':''}" data-act="cog" aria-label="Roster settings" aria-expanded="${!!UI.cog}" title="Roster settings"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div>
    ${G.example?`<p class="pill brass">Example gang – edit it or start fresh</p>`:''}
    <div class="field"><label class="label" for="g-name">Gang name</label><input type="text" id="g-name" value="${esc(G.name)}"></div>
    <div class="field"><label class="label" for="g-ded">Unholy Dedication</label><select id="g-ded">${DEDKEYS.map(k=>`<option value="${k}" ${D().key===k?'selected':''}>${DED[k].n} – ${DED[k].title}</option>`).join('')}</select></div>
@@ -917,8 +920,8 @@ function renderBuild(){const total=gangCost(),I=validate(),pct=Math.min(100,tota
     const GR=[['Leader',['apostle']],['Champions',['disciple','sorcerer','mutantlord']],['Gangers',['mutant','chosen','cultist','acolyte']],['Brutes',['ogryn','daemon']],['Legend',['scrunt']]];
     return `<div class="recruit row"><select id="add-sel" aria-label="Fighter to recruit" style="flex:1;min-width:0">${GR.map(([g,ts])=>{const o=ts.filter(t=>ORDERF().includes(t));return o.length?`<optgroup label="${g}">${o.map(t=>{const T=FT[t],c=counts[t]||0,full=T.max<99&&c>=T.max;return `<option value="${t}" ${t===cur?'selected':''} ${full?'disabled':''}>${T.n} – ${T.cost} cr${T.max<99?` (${c}/${T.max})`:c?` (${c})`:''}${full?' – full':''}</option>`}).join('')}</optgroup>`:''}).join('')}</select><button class="btn primary" data-act="addsel" ${cur?'':'disabled'}>Add</button></div>`})()}
   </section>
-  <section class="panel stack" aria-label="Roster tools">
-   <span class="label">Roster</span>
+  <section class="panel stack" aria-label="Roster tools" ${UI.cog?'':'hidden'}>
+   <div class="row" style="justify-content:space-between"><span class="label">Roster settings</span><button class="btn small ghost" data-act="cog">Close</button></div>
    <div class="row"><button class="btn small" data-act="copytext">Copy as text</button><button class="btn small" data-act="expand">Expand all</button><button class="btn small" data-act="collapse">Collapse all</button></div>
    <div class="row">${confirmKey==='new'?`<span class="confirm">Clear every fighter? <button class="btn small danger" data-act="new-yes">Clear</button><button class="btn small" data-act="cancel">Keep</button></span>`:`<button class="btn small" data-act="new">New empty gang</button><button class="btn small" data-act="example">Load example</button>`}</div>
    <details class="rd"><summary>Back up or move this gang</summary><div class="t stack"><p class="muted" style="font-size:.85rem">The roster saves in this browser. Copy this code to keep a backup or open the gang on another device.</p><textarea id="io" rows="5">${esc(JSON.stringify(G))}</textarea><div class="row"><button class="btn small" data-act="copyjson">Copy code</button><button class="btn small" data-act="import">Load pasted code</button></div></div></details>
@@ -996,6 +999,7 @@ app.addEventListener('click',e=>{const el=e.target.closest('button,[data-toggle]
  if(d.rmf){confirmKey=d.rmf;renderBuild();return}
  if(d.rmfYes){G.fighters=G.fighters.filter(f=>f.uid!==d.rmfYes);confirmKey=null;commit();return}
  const a=d.act;if(!a)return;
+ if(a==='cog'){UI.cog=!UI.cog;saveUI();renderBuild();if(UI.cog)requestAnimationFrame(()=>document.querySelector('[aria-label="Roster tools"]')?.scrollIntoView({block:'nearest',behavior:'smooth'}));return}
  if(a==='cancel'){confirmKey=null;renderBuild()}
  if(a==='new'){confirmKey='new';renderBuild()}
  if(a==='new-yes'){G={name:'Unnamed Cult',ded:D().key,path:'destruction',budget:1000,rep:0,founding:true,fighters:[]};confirmKey=null;save();renderBuild()}
