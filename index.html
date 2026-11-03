@@ -230,7 +230,7 @@ acolyte:{n:'Acolyte',role:'Juve',cost:20,max:99,code:'J',st:[6,5,5,3,3,1,4,2,9,8
 ogryn:{n:'Corrupted Ogryn',role:'Brute',cost:210,max:1,code:'',st:[5,3,5,5,5,3,4,3,7,6,8,9],brute:1,mut:[0,2],P:['Brawn','Ferocity','Savagery'],S:['Combat','Mutation'],rules:['Juggernaut','Murderous Brute','Slow-Witted'],equip:'Two Open Fists by default. Options below.'},
 daemon:{n:'Daemon',role:'Brute',cost:250,max:1,code:'',st:[6,3,4,4,4,3,4,3,9,4,6,7],mark:1,brute:1,rep:8,mut:[0,0],P:['Combat','Ferocity','Savagery'],S:['Brawn','Mutation'],rules:['Immaterial Member','Juggernaut','Terrifying','Incorporeal','Instability','Warp Denizen','Manifestation of Chaos','Mark of Chaos'],equip:'Vorpal Claws and Warpfire Breath.'},
 };
-FT.scrunt={n:'Scrunt Nathan',role:'Legend',cost:88,max:1,code:'',st:[8,2,6,4,4,2,2,4,8,2,10,10],mut:[0,0],P:['Ferocity','Savagery'],S:['Cunning'],rules:['Scrunt Happens','Eight-Fold Grudge','Absolutely Not a Chaos Spawn'],equip:'Fights with whatever is nearest: always counts as armed with a Two-Handed Hammer and a Stub Gun.',secret:1};
+FT.scrunt={n:'Scrunt Nathan',role:'Wretch',cost:1,max:1,code:'',st:[3,6,6,1,1,1,6,1,12,12,12,12],mut:[0,0],P:['Nothing'],S:['Nothing'],rules:['Snivelling Coward','Beneath Contempt','Grovel','Scrunt Happens','Faithless','Ritual Fodder','Absolutely Not a Chaos Spawn'],equip:'Armed with a Sharpened Spoon. Cannot be given any other weapons or equipment; he drops them.',secret:1};
 const ALLORDER=['apostle','disciple','sorcerer','mutantlord','mutant','chosen','cultist','acolyte','ogryn','daemon','scrunt'];
 const ORDERF=()=>ALLORDER.filter(t=>t!=='scrunt'||G.scrunt);
 
@@ -274,9 +274,13 @@ const RULES={
 'Warp Denizen':`Ignores all Lasting Injuries except Memorable Death.`,
 'Manifestation of Chaos':`On recruitment, generate 2 random skills from its Primary skill sets.`,
 'Mark of Chaos':`Gains the Gang Leader's Mark: the Mark of Khorne.`,
-'Scrunt Happens':`Once per battle, Scrunt Nathan may change any one dice roll – his or anyone else's – to an 8. If that's impossible on the dice, it becomes a 6 and he sulks for the rest of the round (no actions).`,
-'Eight-Fold Grudge':`Hatred (everyone). Must re-roll failed wound rolls in melee against literally anybody. He's had a long week.`,
-'Absolutely Not a Chaos Spawn':`Can never gain Mutations, can't be Captured, and if anything would turn him into a Chaos Spawn, he refuses. Nobody argues.`,
+'Snivelling Coward':`Automatically fails every Cool, Nerve and Willpower check. Whenever an enemy ends a move within 6" of him, he immediately Retreats 3" away from it and goes Prone, whimpering.`,
+'Beneath Contempt':`Enemies may ignore him for Target Priority. Taking him Out of Action earns no XP – it isn't worth mentioning. He never counts for Bottle tests or scenario objectives.`,
+'Grovel':`Grovel (Double): an enemy within 3" rolls a D6. On a 6, they take pity and can't attack him this round. On anything else they laugh, and he suffers a Flesh Wound from embarrassment.`,
+'Scrunt Happens':`Once per battle he may re-roll one of his own dice, but must keep the lower result.`,
+'Faithless':`Never generates Delusion Dice and can't invoke Articles of Damnation. If he Beseeches the Gods, the pool loses a die instead.`,
+'Ritual Fodder':`If he is in the gang, he is always chosen as the focus of the Ritual of Blood. Khorne remains unimpressed.`,
+'Absolutely Not a Chaos Spawn':`Can never gain Mutations or skills, and can't be Captured – nobody wants him. Even the Chaos Gods refuse to turn him into a Spawn.`,
 'Mark of Khorne':`Martial: +1 WS, +2 Cool. Frenzied: −2 BS. Eternal Rivalry: Hatred (Mark of Slaanesh) – must re-roll failed wound rolls in melee against fighters with the Mark of Slaanesh.`,
 'Clamber':`Climbing costs no extra movement; every vertical surface counts as a ladder.`,
 'Omen of Fortune':`Once per game, if its owner is within 3", the owner checks Willpower before the enemy rolls to wound one successful hit. If passed, that attack misses.`,
@@ -416,6 +420,7 @@ const WP={
 'Tenebrous Scourge':['E','3"','–','–','S+3','–','1','–','Power, Entangle, Versatile, Melee'],
 'Whisperbane Knife':['–','E','–','+1','S','–','1','–','Scattershot, Backstab, Melee'],
 'Xenarch Death Arc':['E','5"','+1','–','3','–','1','2+','Rapid Fire (2), Shock, Versatile, Plentiful, Melee'],
+'Sharpened Spoon':['–','E','–','-1','S-1','–','1','–','Melee, Pathetic (no Wound roll can ever succeed on better than a 6)'],
 'Open Fist':['–','E','–','–','S','-1','1','–','Knockback, Melee'],
 'Power Maul':['–','E','–','–','S+2','-1','1','–','Power, Melee'],
 'Horrific Appendages':['–','E','–','–','S','-1','2','–','Pulverise, Rending, Melee'],
@@ -720,7 +725,7 @@ function itemCount(n){let k=0;G.fighters.forEach(f=>(f.items||[]).forEach(i=>{if
 function weaponsOf(f){const out=[];
  if(f.type==='ogryn'){(f.hands||['Open Fist','Open Fist']).forEach(h=>out.push([h,WP[h]]))}
  if(f.type==='daemon'){out.push(['Vorpal Claws',WP['Vorpal Claws']],['Warpfire Breath',WP['Warpfire Breath']])}
- if(f.type==='scrunt'){out.push(['Two-Handed Hammer',WP['Two-Handed Hammer']],['Stub Gun',WP['Stub Gun']])}
+ if(f.type==='scrunt'){out.push(['Sharpened Spoon',WP['Sharpened Spoon']])}
  (f.items||[]).forEach(n=>{const e=EQ[n];if(e&&e.p&&e.p.length)e.p.forEach(p=>out.push([p,WP[p]]))});
  const seen=new Set();return out.filter(([n])=>{if(n==='Polearm'&&seen.has(n))return false;seen.add(n);return true})}
 function gearOf(f){return (f.items||[]).filter(n=>EQ[n]&&!(EQ[n].p&&EQ[n].p.length))}
@@ -893,7 +898,7 @@ function rosterText(){const L=[`${G.name} – Chaos Cult (Khorne), ${PATHS[G.pat
 /* ============================== PLAY ============================== */
 const STATUS=[['standing','Standing'],['pinned','Pinned'],['si','Seriously Injured'],['broken','Broken'],['ooa','Out of Action'],['out','Not in crew']];
 const fsOf=f=>B.fs[f.uid]||(B.fs[f.uid]={st:'standing',fw:0,imp:false,eng:false});
-function diceFor(f){const s=fsOf(f);if(['si','broken','ooa','out'].includes(s.st))return 0;let n=1;
+function diceFor(f){const s=fsOf(f);if(f.type==='scrunt')return 0;if(['si','broken','ooa','out'].includes(s.st))return 0;let n=1;
  if(f.type==='chosen')n=2;if((f.items||[]).includes('Cult Icon'))n=Math.max(n,3);if(/hagiocracy/i.test(f.skills||''))n=Math.max(n,3);if(s.imp)n=Math.max(n,3);
  if(G.path==='vacillation'&&(FT[f.type].hier))n++;if(G.path==='destruction'&&s.eng)n++;return n}
 function endPhaseInfo(){let n=0;const parts=[];G.fighters.forEach(f=>{const k=diceFor(f);if(k){n+=k}});parts.push(`${n} from fighters`);
@@ -1010,7 +1015,7 @@ app.addEventListener('click',e=>{if(!document.querySelector('.seg'))return;const
  if(b==='reset-yes'){playConfirm=false;B={round:1,pool:0,used:{},fs:{},enemyOOA:0,enemyFW:0,bottled:false,last:null,art:B.art}}
  if(b==='invoke'){const A=arts.find(a=>a.id===(B.art&&arts.find(x=>x.id===B.art)?B.art:arts[0].id));const n=Math.min(B.useN||2,B.pool);if(!A||!n)return;
   const dice=Array.from({length:n},d6),total=dice.reduce((s,v)=>s+v,0),pass=total>=A.t;B.pool-=n;if(pass)B.used[A.id]=true;B.last={kind:'art',dice,total,t:A.t,pass,passT:A.pass,failT:A.fail}}
- if(b==='ritual'){const R=B.rit||{};const pool=G.fighters.filter(f=>f.type!=='apostle');const focus=pool[Math.floor(Math.random()*pool.length)];
+ if(b==='ritual'){const R=B.rit||{};const pool=G.fighters.filter(f=>f.type!=='apostle');const focus=G.fighters.find(f=>f.type==='scrunt')||pool[Math.floor(Math.random()*pool.length)];
   const dice=[d6(),d6()];let def=0,defName='';if(R.defile){const df=byUid(R.defile);if(df){def=1+Math.floor(Math.random()*3);defName=df.name||FT[df.type].n;const s=fsOf(df);s.fw=def;s.st='standing'}}
   const total=dice[0]+dice[1]+(R.won?1:0)+(R.gain?1:0)+(R.bleed?1:0)+1-(R.lost?1:0)-(R.rec?1:0)+def;
   B.ritRes={dice,def,defName,total,focus:focus?(focus.name||FT[focus.type].n):'–',xp:d6()}}
@@ -1080,7 +1085,7 @@ app.addEventListener('input',e=>{if(e.target.id==='rules-q'){UI.rules=e.target.v
 app.addEventListener('click',e=>{const a=e.target.closest('[data-jump]');if(!a)return;e.preventDefault();document.getElementById('sec-'+a.dataset.jump)?.scrollIntoView({behavior:'smooth',block:'start'})});
 
 /* Easter egg: Scrunt Nathan */
-function unlockScrunt(){if(G.scrunt)return;G.scrunt=true;save();const h=document.querySelector('.brand h1');h.classList.add('quake');setTimeout(()=>h.classList.remove('quake'),900);toast('Blood for the Blood God! Scrunt Nathan answers the call.');route()}
+function unlockScrunt(){if(G.scrunt)return;G.scrunt=true;save();const h=document.querySelector('.brand h1');h.classList.add('quake');setTimeout(()=>h.classList.remove('quake'),900);toast('Blood for the Blood God! Scrunt Nathan has crawled out from under a pipe.');route()}
 (()=>{let n=0,t=0;document.querySelector('.brand h1').addEventListener('click',()=>{const now=Date.now();n=now-t<1500?n+1:1;t=now;if(n>=8){n=0;unlockScrunt()}})})();
 app.addEventListener('input',e=>{if(e.target.dataset&&e.target.dataset.name&&/^\s*scrunt\s+nathan\s*$/i.test(e.target.value))unlockScrunt()});
 /* skill datalist */
