@@ -197,7 +197,7 @@ textarea{width:100%;font-family:var(--mono);font-size:.78rem}
 .hidden-by-search{display:none!important}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:999px;font-weight:700;z-index:50;font-size:.9rem}
 @keyframes quake{0%,100%{transform:none}20%{transform:translate(-3px,1px) rotate(-2deg)}40%{transform:translate(3px,-1px) rotate(2deg)}60%{transform:translate(-2px,0) rotate(-1deg)}80%{transform:translate(2px,1px) rotate(1deg)}}
-.brand h1{cursor:default;user-select:none}.brand h1.quake,.addgrid .quake{animation:quake .3s 3}
+.brand h1{cursor:default;user-select:none}.brand h1.quake,.recruit.quake{animation:quake .3s 3}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -861,7 +861,9 @@ function renderBuild(){const total=gangCost(),I=validate(),pct=Math.min(100,tota
   </section>
   <section class="panel stack" aria-label="Recruit">
    <span class="label">Recruit</span>
-   <div class="addgrid">${ORDERF().map(t=>{const T=FT[t],c=counts[t]||0,full=T.max<99&&c>=T.max;return `<button class="btn" data-add="${t}" ${full?'disabled':''}><strong>${T.n}</strong><span>${T.cost} cr · ${T.role}${T.max<99?' · '+c+'/'+T.max:''}</span></button>`}).join('')}</div>
+   ${(()=>{const avail=ORDERF().filter(t=>!(FT[t].max<99&&(counts[t]||0)>=FT[t].max));const cur=avail.includes(UI.addSel)?UI.addSel:avail[0];
+    const GR=[['Leader',['apostle']],['Champions',['disciple','sorcerer','mutantlord']],['Gangers',['mutant','chosen','cultist','acolyte']],['Brutes',['ogryn','daemon']],['Legend',['scrunt']]];
+    return `<div class="recruit row"><select id="add-sel" aria-label="Fighter to recruit" style="flex:1;min-width:0">${GR.map(([g,ts])=>{const o=ts.filter(t=>ORDERF().includes(t));return o.length?`<optgroup label="${g}">${o.map(t=>{const T=FT[t],c=counts[t]||0,full=T.max<99&&c>=T.max;return `<option value="${t}" ${t===cur?'selected':''} ${full?'disabled':''}>${T.n} – ${T.cost} cr${T.max<99?` (${c}/${T.max})`:c?` (${c})`:''}${full?' – full':''}</option>`}).join('')}</optgroup>`:''}).join('')}</select><button class="btn primary" data-act="addsel" ${cur?'':'disabled'}>Add</button></div>`})()}
   </section>
   <section class="panel stack" aria-label="Roster tools">
    <span class="label">Roster</span>
@@ -921,6 +923,7 @@ const byUid=k=>G.fighters.find(f=>f.uid===k);
 function commit(){G.example=false;save();renderBuild()}
 app.addEventListener('click',e=>{const el=e.target.closest('button,[data-toggle]');if(!el||!document.querySelector('.builder'))return;const d=el.dataset;
  if(d.toggle){const f=byUid(d.toggle);f.open=!f.open;save();renderBuild();return}
+ if(d.act==='addsel'){const v=document.getElementById('add-sel').value;if(v){UI.addSel=v;saveUI();d.add=v}}
  if(d.add){const t=d.add;const f=F(t,'',[],[],{open:true});if(t==='ogryn')f.hands=['Open Fist','Open Fist'];G.fighters.forEach(x=>x.open=false);G.fighters.push(f);commit();
    requestAnimationFrame(()=>document.querySelector(`[data-uid="${f.uid}"]`)?.scrollIntoView({block:'start',behavior:'smooth'}));toast(`${FT[t].n} recruited`);return}
  if(d.rmitem){const f=byUid(d.rmitem);f.items.splice(+d.i,1);commit();return}
@@ -1167,7 +1170,7 @@ const SCRUNT_LINES=['The Dark Gods sigh. Scrunt Nathan has crawled out from unde
 let scruntN=0;
 function unlockScrunt(){const first=!scruntOn();G.scrunt=true;save();LS.set('ss-scrunt',true);const h=document.querySelector('.brand h1');h.classList.remove('quake');void h.offsetWidth;h.classList.add('quake');setTimeout(()=>h.classList.remove('quake'),900);
  toast(first?SCRUNT_LINES[0]:SCRUNT_LINES[1+(scruntN++%(SCRUNT_LINES.length-1))]);route();
- if((location.hash||'#build')==='#build')requestAnimationFrame(()=>{const b=document.querySelector('[data-add="scrunt"]');if(b){b.scrollIntoView({block:'center',behavior:'smooth'});b.classList.add('quake');setTimeout(()=>b.classList.remove('quake'),900)}})}
+ if((location.hash||'#build')==='#build'){UI.addSel='scrunt';saveUI();renderBuild();requestAnimationFrame(()=>{const b=document.querySelector('.recruit');if(b){b.scrollIntoView({block:'center',behavior:'smooth'});b.classList.add('quake');setTimeout(()=>b.classList.remove('quake'),900)}})}}
 (()=>{let n=0,t=0;document.querySelector('.brand h1').addEventListener('click',()=>{const now=Date.now();n=now-t<1500?n+1:1;t=now;if(n>=8){n=0;unlockScrunt()}})})();
 app.addEventListener('input',e=>{if(e.target.dataset&&e.target.dataset.name&&/^\s*scrunt\s+nathan\s*$/i.test(e.target.value))unlockScrunt()});
 /* skill datalist */
