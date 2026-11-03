@@ -35,11 +35,11 @@
   --blood:#d6443a;  --brass:#cfa85c; --brass-soft:#cfa85c22;
   --ok:#6cbf7a; --warn:#e2a54a; --err:#ee6157; --on-blood:#140d0b; color-scheme:dark}
 :root{--blood-soft:color-mix(in srgb,var(--blood) 13%,transparent)}
-:root[data-ded="nurgle"]{--blood:#4d6a12}:root[data-ded="tzeentch"]{--blood:#1f4fa3}:root[data-ded="slaanesh"]{--blood:#9a2a87}:root[data-ded="undivided"]{--blood:#4b4a57}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"])[data-ded="nurgle"]{--blood:#9cc24b}:root:not([data-theme="light"])[data-ded="tzeentch"]{--blood:#6aa0ee}:root:not([data-theme="light"])[data-ded="slaanesh"]{--blood:#dc6ac8}:root:not([data-theme="light"])[data-ded="undivided"]{--blood:#bdb3c9}}
-:root[data-theme="dark"][data-ded="nurgle"]{--blood:#9cc24b}:root[data-theme="dark"][data-ded="tzeentch"]{--blood:#6aa0ee}:root[data-theme="dark"][data-ded="slaanesh"]{--blood:#dc6ac8}:root[data-theme="dark"][data-ded="undivided"]{--blood:#bdb3c9}
+:root[data-ded="nurgle"]{--blood:#4d6a12;--bg:#e3e6d6;--surface:#f2f4ea;--sunk:#d6dbc4;--line:#bfc6a6;--muted:#5b6247;}:root[data-ded="tzeentch"]{--blood:#1f4fa3;--bg:#dfe4ee;--surface:#f1f4f9;--sunk:#d0d8e7;--line:#b6c2d8;--muted:#4f5b72;}:root[data-ded="slaanesh"]{--blood:#9a2a87;--bg:#ebe0ea;--surface:#f7f1f6;--sunk:#dfd0dd;--line:#cbb5c8;--muted:#6b5568;}:root[data-ded="undivided"]{--blood:#4b4a57;--bg:#e2e1e6;--surface:#f3f3f5;--sunk:#d5d4db;--line:#bdbbc6;--muted:#5b5a66;}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"])[data-ded="nurgle"]{--blood:#9cc24b;--bg:#0f130b;--surface:#171c10;--sunk:#212817;--line:#323c22;--muted:#a3ab8e;--fg:#e4e8d6;}:root:not([data-theme="light"])[data-ded="tzeentch"]{--blood:#6aa0ee;--bg:#0b0f19;--surface:#121827;--sunk:#1a2234;--line:#2a354d;--muted:#97a3bd;--fg:#dfe6f3;}:root:not([data-theme="light"])[data-ded="slaanesh"]{--blood:#dc6ac8;--bg:#150b14;--surface:#1f121d;--sunk:#2a1827;--line:#3e2539;--muted:#b495ae;--fg:#f0e1ec;}:root:not([data-theme="light"])[data-ded="undivided"]{--blood:#bdb3c9;--bg:#101014;--surface:#18181e;--sunk:#22222a;--line:#33333e;--muted:#a3a2ae;--fg:#e6e5ec;}}
+:root[data-theme="dark"][data-ded="nurgle"]{--blood:#9cc24b;--bg:#0f130b;--surface:#171c10;--sunk:#212817;--line:#323c22;--muted:#a3ab8e;--fg:#e4e8d6;}:root[data-theme="dark"][data-ded="tzeentch"]{--blood:#6aa0ee;--bg:#0b0f19;--surface:#121827;--sunk:#1a2234;--line:#2a354d;--muted:#97a3bd;--fg:#dfe6f3;}:root[data-theme="dark"][data-ded="slaanesh"]{--blood:#dc6ac8;--bg:#150b14;--surface:#1f121d;--sunk:#2a1827;--line:#3e2539;--muted:#b495ae;--fg:#f0e1ec;}:root[data-theme="dark"][data-ded="undivided"]{--blood:#bdb3c9;--bg:#101014;--surface:#18181e;--sunk:#22222a;--line:#33333e;--muted:#a3a2ae;--fg:#e6e5ec;}
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45}
+body{background:var(--bg);color:var(--fg);transition:background .3s,color .3s;font-family:var(--body);font-size:16px;line-height:1.45}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
 button,input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3{font-family:var(--display);font-weight:400;text-wrap:balance;margin:0;letter-spacing:.01em}
@@ -52,7 +52,7 @@ a{color:var(--blood)}
 .wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 
 /* header */
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);transition:background .3s;border-bottom:1px solid var(--line)}
 .top .wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:10px}
 .brand{display:flex;align-items:baseline;gap:10px;margin-right:auto;min-width:0}
 .brand h1{font-size:2rem;line-height:1;color:var(--blood)}
@@ -831,7 +831,7 @@ function validate(){const I=[];const fs=G.fighters;const cnt=t=>fs.filter(f=>f.t
 
 /* ============================== ROUTER ============================== */
 const app=document.getElementById('app');
-function applyDed(){document.documentElement.dataset.ded=D().key;const sm=document.querySelector('.brand small');if(sm)sm.textContent='Chaos Cult · '+D().n}
+function applyDed(){document.documentElement.dataset.ded=D().key;const tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.content=getComputedStyle(document.documentElement).getPropertyValue('--surface').trim()||tc.content;const sm=document.querySelector('.brand small');if(sm)sm.textContent='Chaos Cult · '+D().n}
 function route(){applyDed();const h=(location.hash||'#build').slice(1);const r=['build','play','rules'].includes(h)?h:'build';
  document.querySelectorAll('.tabs a').forEach(a=>a.setAttribute('aria-current',a.dataset.route===r?'page':'false'));
  if(r==='build')renderBuild();else if(r==='play')renderPlay();else renderRules();}
