@@ -198,6 +198,7 @@ textarea{width:100%;font-family:var(--mono);font-size:.78rem}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:999px;font-weight:700;z-index:50;font-size:.9rem}
 @keyframes quake{0%,100%{transform:none}20%{transform:translate(-3px,1px) rotate(-2deg)}40%{transform:translate(3px,-1px) rotate(2deg)}60%{transform:translate(-2px,0) rotate(-1deg)}80%{transform:translate(2px,1px) rotate(1deg)}}
 .brand h1{cursor:default;user-select:none}.brand h1.quake,.recruit.quake{animation:quake .3s 3}
+.fc.dead{opacity:.55}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -753,6 +754,39 @@ D:{suit:'Diamonds',sym:'♦',theme:'Perversion',reward:'Gang Tactics',c:[
 ['The Rot Within',`Reveal at the start. A random fighter carries an infection. If the enemy takes them OOA with a Melee weapon: +1 random Gang Tactic (your choice if a Leader or Champion).`]]},
 };
 
+
+/* Lasting Injuries (current Necromunda table, D66) and campaign status */
+const LI=[
+{lo:11,hi:11,r:'11',n:'Lesson Learned',st:'recovery',xp:'D3',t:`Goes into Recovery, but gains D3 XP.`},
+{lo:12,hi:26,r:'12–26',n:'Out Cold',st:'',t:`Misses the rest of the battle. No lasting effect.`},
+{lo:31,hi:45,r:'31–45',n:'Grievous Wound',st:'recovery',t:`Goes into Recovery.`},
+{lo:46,hi:46,r:'46',n:'Humiliated',st:'recovery',perm:1,mods:{Ld:1,Cl:1},t:`Goes into Recovery. −1 Leadership and −1 Cool.`},
+{lo:51,hi:51,r:'51',n:'Head Injury',st:'recovery',perm:1,mods:{Int:1,WP:1},t:`Goes into Recovery. −1 Intelligence and −1 Willpower.`},
+{lo:52,hi:52,r:'52',n:'Eye Injury',st:'recovery',perm:1,mods:{BS:1},t:`Goes into Recovery. −1 Ballistic Skill.`},
+{lo:53,hi:53,r:'53',n:'Hand Injury',st:'recovery',perm:1,mods:{WS:1},t:`Goes into Recovery. −1 Weapon Skill.`},
+{lo:54,hi:54,r:'54',n:'Hobbled',st:'recovery',perm:1,mods:{M:-1},t:`Goes into Recovery. −1 Movement.`},
+{lo:55,hi:55,r:'55',n:'Spinal Injury',st:'recovery',perm:1,mods:{S:-1},t:`Goes into Recovery. −1 Strength.`},
+{lo:56,hi:56,r:'56',n:'Enfeebled',st:'recovery',perm:1,mods:{T:-1},t:`Goes into Recovery. −1 Toughness.`},
+{lo:61,hi:65,r:'61–65',n:'Critical Injury',st:'critical',t:`In critical condition: dies after the battle unless a Doc treats them (Medical Escort post-battle action).`},
+{lo:66,hi:66,r:'66',n:'Memorable Death',st:'dead',t:`Killed outright. If an enemy attack caused it, that attacker gains 1 extra XP.`},
+];
+const LIP={};LI.filter(x=>x.perm).forEach(x=>LIP[x.n]=x);
+const CSTAT=[['active','Active'],['recovery','In Recovery'],['critical','Critical (needs a Doc)'],['captured','Captured'],['dead','Dead']];
+const cstat=f=>f.status||'active';
+const alive=()=>G.fighters.filter(f=>cstat(f)!=='dead');
+function rollLI(f){const a=d6(),b=d6(),v=a*10+b;const r=LI.find(x=>v>=x.lo&&v<=x.hi);const T=FT[f.type];const nm=f.name||T.n;let note='';
+ const immune=['daemon','scrunt'].includes(f.type);
+ if(immune&&r.n!=='Memorable Death'){note=f.type==='scrunt'?'Nobody could be bothered to hurt him properly – no effect.':'Warp Denizen – ignores every Lasting Injury except Memorable Death.';return{v,r,nm,note,applied:false}}
+ if(f.type==='apostle'&&r.n==='Memorable Death'){const pool=alive().filter(x=>x.uid!==f.uid);const sac=pool[Math.floor(Math.random()*pool.length)];
+  if(sac){sac.status='dead';f.injuries=(f.injuries||[]).concat('Enfeebled');f.muts=f.muts||[];if(!f.muts.includes('Crooked Body'))f.muts.push('Crooked Body');f.status='recovery';
+   note=`Amaranthine: ${sac.name||FT[sac.type].n} dies in the Apostle's place. The Apostle takes Enfeebled and the Crooked Body Mutation.`;return{v,r,nm,note,applied:true}}}
+ if(r.st)f.status=r.st;if(r.perm)f.injuries=(f.injuries||[]).concat(r.n);
+ if(r.xp){const x=1+Math.floor(Math.random()*3);f.xp=(+f.xp||0)+x;note=`+${x} XP.`}
+ if(r.n==='Memorable Death'&&f.type==='apostle')note='No other fighter left to sacrifice.';
+ return{v,r,nm,note,applied:true}}
+function liResult(x){if(!x)return '';return `<div class="result ${['dead','critical'].includes(x.r.st)?'fail':x.r.st?'':'pass'}"><div class="dice"><span class="die hit">${String(x.v)[0]}</span><span class="die hit">${String(x.v)[1]}</span></div><p><strong>${x.v} – ${esc(x.r.n)}</strong> for ${esc(x.nm)}: ${esc(x.r.t)}</p>${x.note?`<p>${esc(x.note)}</p>`:''}</div>`}
+let lastLI={};
+
 /* ============================== STATE ============================== */
 const LS={get(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch(e){return f}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let uidN=Date.now()%100000;const uid=()=>'f'+(uidN++).toString(36);
@@ -782,6 +816,7 @@ const fmt=(k,v)=>k==='M'?v+'"':TN.has(k)?v+'+':String(v);
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,1800)}
 function stats(f){const T=FT[f.type];const o={};STATK.forEach((k,i)=>o[k]=T.st[i]);
  if(T.mark){Object.entries(markMods(f)).forEach(([k,v])=>{o[k]+=v})}
+ (f.injuries||[]).forEach(n=>{const L=LIP[n];if(L)Object.entries(L.mods).forEach(([k,v])=>{o[k]+=v})});
  STATK.forEach(k=>{o[k]=TN.has(k)?Math.min(12,Math.max(2,o[k])):Math.max(k==='A'||k==='M'?1:0,o[k])});
  (f.muts||[]).forEach(m=>{if(m==='Vast Bulk')o.W++;if(m==='Extra Appendages')o.A++});return o}
 function baseStats(type){const o={};STATK.forEach((k,i)=>o[k]=FT[type].st[i]);return o}
@@ -789,7 +824,7 @@ function cost(f){const T=FT[f.type];let c=T.cost;(f.items||[]).forEach(n=>c+=EQ[
  if(T.wyrd)c+=Math.max(0,(f.wyrd||[]).length-1)*30;if(f.psyker)c+=30;
  if(f.type==='ogryn'){(f.hands||[]).forEach(h=>c+=h==='Power Maul'?30:h==='Horrific Appendages'?20:0);if(f.plate)c+=15}
  return c}
-const gangCost=()=>G.fighters.reduce((s,f)=>s+cost(f),0);
+const gangCost=()=>alive().reduce((s,f)=>s+cost(f),0);
 function itemCount(n){let k=0;G.fighters.forEach(f=>(f.items||[]).forEach(i=>{if(i===n)k++}));return k}
 function weaponsOf(f){const out=[];
  if(f.type==='ogryn'){(f.hands||['Open Fist','Open Fist']).forEach(h=>out.push([h,WP[h]]))}
@@ -804,7 +839,7 @@ function statTable(o,base,hurt={}){return `<div class="scroll"><table class="sta
 function ruleDetails(names){return `<div class="rules-list">${names.map(n=>`<details class="rd"><summary>${esc(n)}</summary><p>${esc(RULES[n]||'')}</p></details>`).join('')}</div>`}
 
 /* ============================== VALIDATION ============================== */
-function validate(){const I=[];const fs=G.fighters;const cnt=t=>fs.filter(f=>f.type===t).length;
+function validate(){const I=[];const fs=alive();const cnt=t=>fs.filter(f=>f.type===t).length;
  const ap=cnt('apostle');if(ap!==1)I.push(['err',ap?'Only one Apostle allowed.':'The gang needs an Apostle (Gang Leader).']);
  const hier=fs.filter(f=>FT[f.type].hier).length,gf=fs.filter(f=>FT[f.type].gf).length,champs=fs.filter(f=>FT[f.type].champ).length;
  if(hier>gf)I.push(['err',`Leader and Champions (${hier}) outnumber Gang Fighters (${gf}).`]);
@@ -841,7 +876,7 @@ window.addEventListener('hashchange',()=>{route();window.scrollTo(0,0)});
 /* ============================== BUILDER ============================== */
 let confirmKey=null;
 function renderBuild(){const total=gangCost(),I=validate(),pct=Math.min(100,total/Math.max(1,G.budget)*100);
- const counts={};G.fighters.forEach(f=>counts[f.type]=(counts[f.type]||0)+1);
+ const counts={};alive().forEach(f=>counts[f.type]=(counts[f.type]||0)+1);
  app.innerHTML=`<div class="builder">
  <aside class="rail">
   <section class="panel stack" aria-label="Gang settings">
@@ -883,11 +918,12 @@ function cardEdit(f){const T=FT[f.type],st=stats(f),c=cost(f),k=f.uid;
  const muts=f.muts||[];const AC=access(f.type);const canMut=f.type!=='scrunt'&&(T.mut[1]>0||!G.founding&&(AC.P.includes('Mutation')||AC.S.includes('Mutation')));
  const rules=T.rules.slice();if(T.mark)rules.push(markName());
  const gear=gearOf(f);
- return `<article class="fc ${f.open?'open':''} ${f.type==='apostle'?'leader':''}" data-uid="${k}">
+ const CS=cstat(f);return `<article class="fc ${f.open?'open':''} ${f.type==='apostle'?'leader':''} ${CS==='dead'?'dead':''}" data-uid="${k}">
  <div class="fch" data-toggle="${k}" role="button" tabindex="0" aria-expanded="${!!f.open}">
   <span class="chev" aria-hidden="true">▸</span>
   <div style="min-width:0"><div class="nm">${esc(f.name||T.n)}</div><div class="ty">${T.n} · ${T.role}${f.spec?' · Specialist':''}${muts.length?` · ${muts.length} mutation${muts.length>1?'s':''}`:''}</div></div>
-  <span class="cost">${c} cr</span>
+  ${CS!=='active'?`<span class="pill ${CS==='dead'||CS==='critical'?'blood':'brass'}">${esc(CSTAT.find(x=>x[0]===CS)[1])}</span>`:''}${(f.injuries||[]).length?`<span class="pill" title="${esc(f.injuries.join(', '))}">${f.injuries.length} injur${f.injuries.length>1?'ies':'y'}</span>`:''}
+  <span class="cost">${CS==='dead'?'–':c+' cr'}</span>
  </div>
  ${f.open?`<div class="fcb">
   <div class="row"><div class="field" style="flex:1"><label class="label" for="nm-${k}">Name</label><input type="text" id="nm-${k}" data-name="${k}" value="${esc(f.name)}" placeholder="${T.n}"></div></div>
@@ -914,6 +950,14 @@ function cardEdit(f){const T=FT[f.type],st=stats(f),c=cost(f),k=f.uid;
    ${f.type==='apostle'?`<label class="check"><input type="checkbox" data-psy="${k}" id="ps-${k}" ${f.psyker?'checked':''} ${G.rep<10&&!f.psyker?'disabled':''}> Psyker upgrade (+30, Rep 10, random Wyrd Power)</label>`:''}
    ${f.type==='daemon'?`<label class="check"><input type="checkbox" data-psy="${k}" id="ps-${k}" ${f.psyker?'checked':''}> Psyker upgrade (+30, random Wyrd Power)</label>`:''}
   </div>
+  <div class="sub"><span class="label">Campaign</span>
+   <div class="row"><label class="field"><span class="label">Status</span><select data-cstat="${k}" id="cs-${k}">${CSTAT.map(([v,l])=>`<option value="${v}" ${CS===v?'selected':''}>${l}</option>`).join('')}</select></label>
+   <label class="field" style="width:90px"><span class="label">XP</span><input type="number" min="0" id="xp-${k}" data-xp="${k}" value="${+f.xp||0}"></label>
+   <button class="btn small" data-rollli="${k}" ${CS==='dead'?'disabled':''}>Roll Lasting Injury</button></div>
+   ${liResult(lastLI[k])}
+   <div class="chips">${(f.injuries||[]).map((n,i)=>`<span class="chip" title="${esc(LIP[n]?.t)}">${esc(n)}<button aria-label="Remove ${esc(n)}" data-rminj="${k}" data-i="${i}">×</button></span>`).join('')||'<span class="muted">No lasting injuries.</span>'}</div>
+   <select data-addinj="${k}" id="ai2-${k}" aria-label="Add a lasting injury"><option value="">+ Add lasting injury…</option>${LI.filter(x=>x.perm).map(x=>`<option value="${x.n}">${x.r} ${x.n} – ${x.t.replace('Goes into Recovery. ','')}</option>`).join('')}</select>
+  </div>
   <div class="sub"><span class="label">Special rules</span>${ruleDetails(rules)}</div>
   <div class="row">${confirmKey===k?`<span class="confirm">Remove ${esc(f.name||T.n)}? <button class="btn small danger" data-rmf-yes="${k}">Remove</button><button class="btn small" data-act="cancel">Keep</button></span>`:`<button class="btn small" data-dup="${k}">Duplicate</button><button class="btn small danger" data-rmf="${k}">Remove</button>`}</div>
  </div>`:''}
@@ -928,6 +972,8 @@ app.addEventListener('click',e=>{const el=e.target.closest('button,[data-toggle]
    requestAnimationFrame(()=>document.querySelector(`[data-uid="${f.uid}"]`)?.scrollIntoView({block:'start',behavior:'smooth'}));toast(`${FT[t].n} recruited`);return}
  if(d.rmitem){const f=byUid(d.rmitem);f.items.splice(+d.i,1);commit();return}
  if(d.rmmut){const f=byUid(d.rmmut);f.muts.splice(+d.i,1);commit();return}
+ if(d.rminj){const f=byUid(d.rminj);f.injuries.splice(+d.i,1);commit();return}
+ if(d.rollli){const f=byUid(d.rollli);lastLI[f.uid]=rollLI(f);commit();toast(`${lastLI[f.uid].v}: ${lastLI[f.uid].r.n}`);return}
  if(d.dup){const f=byUid(d.dup);const c=JSON.parse(JSON.stringify(f));c.uid=uid();c.name=(f.name||FT[f.type].n)+' II';G.fighters.splice(G.fighters.indexOf(f)+1,0,c);commit();return}
  if(d.rmf){confirmKey=d.rmf;renderBuild();return}
  if(d.rmfYes){G.fighters=G.fighters.filter(f=>f.uid!==d.rmfYes);confirmKey=null;commit();return}
@@ -960,6 +1006,9 @@ app.addEventListener('change',e=>{const t=e.target;if(!document.querySelector('.
  if(d.hand){const f=byUid(d.hand);f.hands=f.hands||['Open Fist','Open Fist'];f.hands[+d.h]=t.value;commit()}
  if(d.plate){byUid(d.plate).plate=t.checked;commit()}
  if(d.undiv){byUid(d.undiv).undiv=t.value;commit()}
+ if(d.cstat){byUid(d.cstat).status=t.value;commit()}
+ if(d.xp){byUid(d.xp).xp=Math.max(0,+t.value||0);commit()}
+ if(d.addinj&&t.value){const f=byUid(d.addinj);f.injuries=(f.injuries||[]).concat(t.value);commit()}
  if(t.id==='g-ded'){G.ded=t.value;applyDed();commit()}
 });
 function copy(txt,msg,fallbackEl){try{navigator.clipboard.writeText(txt).then(()=>toast(msg),()=>sel(fallbackEl))}catch(e){sel(fallbackEl)}
@@ -968,13 +1017,13 @@ function rosterText(){const L=[`${G.name} – Chaos Cult (${D().n}), ${PATHS[G.p
  G.fighters.forEach(f=>{const T=FT[f.type],s=stats(f);L.push(`${f.name||T.n} – ${T.n}${f.spec?' (Specialist)':''} – ${cost(f)} cr`);
   L.push('  '+STATK.map(k=>k+' '+fmt(k,s[k])).join(' | '));
   const w=weaponsOf(f).map(x=>x[0]);if(w.length)L.push('  Weapons: '+w.join(', '));const g=gearOf(f);if(g.length)L.push('  Wargear: '+g.join(', '));
-  if(T.mark)L.push('  '+markName()+': '+markSummary(f));if((f.muts||[]).length)L.push('  Mutations: '+f.muts.join(', '));if(f.wyrd&&f.wyrd.length)L.push('  Wyrd Powers: '+f.wyrd.join(', '));if(f.skills)L.push('  Skills: '+f.skills);L.push('')});
+  if(cstat(f)!=='active')L.push('  Status: '+CSTAT.find(x=>x[0]===cstat(f))[1]);if((f.injuries||[]).length)L.push('  Lasting Injuries: '+f.injuries.join(', '));if(+f.xp)L.push('  XP: '+f.xp);if(T.mark)L.push('  '+markName()+': '+markSummary(f));if((f.muts||[]).length)L.push('  Mutations: '+f.muts.join(', '));if(f.wyrd&&f.wyrd.length)L.push('  Wyrd Powers: '+f.wyrd.join(', '));if(f.skills)L.push('  Skills: '+f.skills);L.push('')});
  return L.join('\n')}
 
 /* ============================== PLAY ============================== */
 const STATUS=[['standing','Standing'],['pinned','Pinned'],['si','Seriously Injured'],['broken','Broken'],['ooa','Out of Action'],['out','Not in crew']];
-const fsOf=f=>B.fs[f.uid]||(B.fs[f.uid]={st:'standing',fw:0,imp:false,eng:false});
-function diceFor(f){const s=fsOf(f);if(f.type==='scrunt')return 0;if(['si','broken','ooa','out'].includes(s.st))return 0;let n=1;
+const fsOf=f=>B.fs[f.uid]||(B.fs[f.uid]={st:cstat(f)==='active'?'standing':'out',fw:0,imp:false,eng:false});
+function diceFor(f){const s=fsOf(f);if(f.type==='scrunt'||cstat(f)!=='active')return 0;if(['si','broken','ooa','out'].includes(s.st))return 0;let n=1;
  if(f.type==='chosen')n=2;if((f.items||[]).includes('Cult Icon'))n=Math.max(n,3);if(/hagiocracy/i.test(f.skills||''))n=Math.max(n,3);if(s.imp)n=Math.max(n,3);
  if(G.path==='vacillation'&&(FT[f.type].hier))n++;if(G.path==='destruction'&&s.eng)n++;return n}
 function endPhaseInfo(){let n=0;const parts=[];G.fighters.forEach(f=>{const k=diceFor(f);if(k){n+=k}});parts.push(`${n} from fighters`);
@@ -1013,13 +1062,14 @@ function playBattle(){const ep=endPhaseInfo();const arts=pathArts(G.path);const 
   ${B.last&&B.last.kind==='art'?`<div class="result ${B.last.pass?'pass':'fail'}"><div class="dice">${B.last.dice.map(v=>`<span class="die hit">${v}</span>`).join('')}</div><p><strong>${B.last.total}</strong> vs ${B.last.t}+ – <strong>${B.last.pass?'Passed':'Failed'}</strong>: ${esc(B.last.pass?B.last.passT:B.last.failT)}</p>${xpBonus(B.last.dice,B.last.total)?`<p class="pill blood">${esc(xpBonus(B.last.dice,B.last.total))}</p>`:''}</div>`:''}
  </section>
  <section class="stack" aria-label="Fighters"><div class="row" style="justify-content:space-between"><h3>Fighters</h3><span class="muted" style="font-size:.88rem">Toughness drops by 1 per Flesh Wound; at Flesh Wounds equal to Toughness the fighter goes Out of Action.</span></div>
- <div class="tk">${G.fighters.map(trackCard).join('')||'<p class="muted">Build a gang first.</p>'}</div></section>
+ <div class="tk">${alive().map(trackCard).join('')||'<p class="muted">Build a gang first.</p>'}</div></section>
  <section class="stack"><h3>Articles – ${PATHS[G.path].n}</h3><p class="muted">${esc(PATHS[G.path].benefit)}</p><div class="arts">${arts.map(a=>`<div class="art ${B.used[a.id]?'used':''}"><h4>(${a.num}) “${esc(a.n)}” <span class="thr">${a.t}+</span></h4><p>${esc(a.pass)}</p><p class="f">Fail: ${esc(a.fail)}</p></div>`).join('')}</div></section>`}
 
 function trackCard(f){const T=FT[f.type],s=fsOf(f),st=stats(f);const hurt={};if(s.fw)hurt.T=Math.max(0,st.T-s.fw);
  const rules=T.rules.slice();if(T.mark)rules.push(markName());const g=gearOf(f);
  return `<article class="tc st-${s.st}">
-  <div class="hd"><strong>${esc(f.name||T.n)}</strong><span class="muted" style="font-size:.82rem">${T.n}${f.spec?' · Specialist':''}</span><span class="pill" style="margin-left:auto" title="Delusion Dice this End Phase">${diceFor(f)} DD</span></div>
+  <div class="hd"><strong>${esc(f.name||T.n)}</strong><span class="muted" style="font-size:.82rem">${T.n}${f.spec?' · Specialist':''}</span>${cstat(f)!=='active'?`<span class="pill brass">${esc(CSTAT.find(x=>x[0]===cstat(f))[1])}</span>`:''}<span class="pill" style="margin-left:auto" title="Delusion Dice this End Phase">${diceFor(f)} DD</span></div>
+  ${s.st==='ooa'?`<div class="row"><button class="btn small primary" data-pli="${f.uid}">Roll Lasting Injury</button><span class="muted" style="font-size:.82rem">Out of Action – roll after the battle.</span></div>${liResult(lastLI[f.uid])}`:''}
   ${statTable(st,null,hurt)}
   ${wtable(weaponsOf(f))}
   ${g.length||(f.muts||[]).length||f.skills||(f.wyrd||[]).length?`<p style="font-size:.85rem">${[g.join(', '),(f.muts||[]).join(', '),f.skills,(f.wyrd||[]).join(', ')].filter(Boolean).map(esc).join(' · ')}</p>`:''}
@@ -1069,6 +1119,7 @@ function playSheet(){const sec=(t,b,open)=>`<details class="rd" ${open?'open':''
  return `<div class="stack">
  ${sec('Gang rules in play',list([['Limited Supply','Every ranged weapon a Chaos Cult fighter uses has the Scarce trait.'],['Infernal Pacts','On activation, a fighter with Blaze and/or Insane may remove them, then suffers D2 Flesh Wounds at the end of the activation.'],[markName(),'Leader, Champions and the Daemon. '+markText()],['Devotion','Friendly fighters within 6" and line of sight of the Apostle may use their Cool and Willpower.'],['Group Activation','Apostle (2), Disciple (1), Cult Icon +1. One Group Activation per gang per turn. The Ogryn is Slow-Witted.'],['Bottle tests','Apostle passing Cool: all friends within 12" pass. Champions: 6". Mutant Lord: only Mutants within 6".']]),true)}
  ${sec('Delusion Dice and Articles',list([['Generate','End Phase: D6 per fighter not Seriously Injured or Broken; 5+ adds a die. Chosen roll 2, Cult Icon/Hagiocracy/Impassioned roll 3.'],['Beseech the Gods (Double)','The fighter becomes Impassioned and rolls three D6 in the End Phase.'],['Invoke','Declare at the start of an activation, commit dice, total ≥ Threshold to pass. Dice are discarded either way.'],[D().n,xpRule()],['Limit','A passed Article can’t be invoked again this round.'],['Path benefit',PATHS[G.path].benefit]]),true)}
+ ${sec('Lasting Injuries (D66)',`<div class="scroll"><table class="dt"><tbody>${LI.map(x=>`<tr><td class="c">${x.r}</td><td><strong>${x.n}</strong></td><td>${esc(x.t)}</td></tr>`).join('')}</tbody></table></div><p class="muted" style="font-size:.85rem">Amaranthine: if the Apostle suffers a Memorable Death, a random fighter dies instead and the Apostle takes Enfeebled and Crooked Body. The Daemon ignores everything except Memorable Death.</p>`)}
  ${sec('Heresy skills',list(HERESY))}
  ${sec(`${D().god} skills (${D().n})`,list(GODSKILL[D().god]))}
  ${sec('Wyrd Powers (Aetheric)',list(WYRD))}
@@ -1079,6 +1130,7 @@ function playSheet(){const sec=(t,b,open)=>`<details class="rd" ${open?'open':''
 
 app.addEventListener('click',e=>{if(!document.querySelector('.seg'))return;const el=e.target.closest('button');if(!el)return;const d=el.dataset;
  if(d.ptab){UI.play=d.ptab;saveUI();renderPlay();return}
+ if(d.pli){const f=byUid(d.pli);lastLI[f.uid]=rollLI(f);save();renderPlay();toast(`${lastLI[f.uid].v}: ${lastLI[f.uid].r.n}`);return}
  if(d.fw){const f=byUid(d.fw),s=fsOf(f);s.fw=Math.max(0,s.fw+(+d.d));if(s.fw>=stats(f).T&&s.st!=='ooa'){s.st='ooa';toast(`${f.name||FT[f.type].n} goes Out of Action`)}saveB();renderPlay();return}
  if(d.reveal){DK.shown=DK.shown||[];DK.shown.push(d.reveal);saveD();renderPlay();return}
  if(d.done){DK.hand=DK.hand.filter(x=>x!==d.done);DK.removed.push(d.done);DK.note='';saveD();renderPlay();return}
@@ -1151,6 +1203,9 @@ function renderRules(){const tbl=(heads,rows,cls='')=>`<div class="scroll"><tabl
   ...PATHKEYS.map(k=>{const P=PATHS[k];return rb(P.n,`<p class="muted" style="font-size:.9rem">${esc(P.blurb)}</p><p style="font-size:.9rem"><strong>Gang benefit:</strong> ${esc(P.benefit)}</p><div class="arts">${pathArts(k).map(a=>`<div class="art"><h4>(${a.num}) “${esc(a.n)}” <span class="thr">${a.t}+</span></h4><p>${esc(a.pass)}</p><p class="f">Fail: ${esc(a.fail)}</p></div>`).join('')}</div>`,true)})]]);
  S.push(['rituals','Dark Ritual',[rb('Dark Ritual pre-battle action',`<ol><li>Before crews are chosen, seek the favour of ${D().key==='undivided'?'any Chaos power':esc(D().title)}.</li><li>Randomly pick one gang member (not the Leader) as the focus. You may Bleed the Captive and/or Defile a fighter.</li><li>Roll 2D6: +1 won last battle, +1 gained Rep, +1 Captive bled, +1 matching dedication, −1 lost Rep, −1 Leader in Recovery.</li><li><strong>Bleed the Captive:</strong> +1; the captive rolls a Lasting Injury of 50+D6, is placed within 12" of the centre; enemies within 1" can Free Captive (Simple) – pass Intelligence to capture, fail and the captive returns Humiliated.</li><li><strong>Defilement:</strong> a fighter in the crew starts with D3 Flesh Wounds; +1 per wound.</li><li><strong>9+:</strong> the chosen power's favour for one battle; the focus gains +D6 XP. <strong>4 or less:</strong> the focus becomes a Chaos Spawn.</li></ol>`),
   ...(D().key==='undivided'?Object.keys(FAV):[D().fav]).map(k=>{const F2=FAV[k];return rb(`${F2.r} – ${esc(F2.god)}`,ul([`<strong>Blessing:</strong> ${esc(F2.b[0])}`,`<strong>Boon:</strong> ${esc(F2.b[1])}`,`<strong>Warped:</strong> ${esc(F2.b[2])}`]))})]]);
+ S.push(['injuries','Injuries & status',[rb('Lasting Injuries',`<p style="font-size:.9rem">After the battle, roll a D66 for each fighter taken Out of Action. Stat changes stack and are permanent.</p>`+tbl(['D66','Result','Effect'],LI.map(x=>`<tr><td class="c">${x.r}</td><td><strong>${x.n}</strong></td><td>${esc(x.t)}</td></tr>`)),true),
+  rb('Fighter status',ul(['<strong>Active:</strong> available for battles.','<strong>In Recovery:</strong> misses the next battle, then returns to Active.','<strong>Critical (needs a Doc):</strong> dies after the battle unless treated with a Medical Escort post-battle action.','<strong>Captured:</strong> held by another gang until rescued, ransomed or traded.','<strong>Dead:</strong> removed from play; no longer counts towards gang cost.'])),
+  rb('Chaos Cult exceptions',ul(['<strong>Amaranthine (Apostle):</strong> a Memorable Death passes to a random gang fighter as a Sacrifice; the Apostle takes Enfeebled and the Crooked Body Mutation. The Apostle can\u2019t be Captured.','<strong>Warp Denizen (Daemon):</strong> ignores all Lasting Injuries except Memorable Death.','<strong>Chaos Spawn:</strong> never suffers Lasting Injuries except Memorable Death.','<strong>Bleed the Captive:</strong> the captive rolls a Lasting Injury of 50+D6 (results 51–56).']))]]);
  S.push(['subplots','Sub-plots',[rb('Using sub-plots',ul(['Agree before the battle. Each player privately draws one card from a deck of playing cards.','A Joker is shown and discarded; draw two cards instead (repeat for more Jokers).','On completion reveal it, take the reward, and discard the card permanently.'])),
   ...Object.values(SP).map(s=>rb(`${s.sym} ${s.suit}: ${s.theme} <span class="pill">${s.reward}</span>`,tbl(['Card','Sub-plot','Condition and reward'],s.c.map((c,i)=>`<tr><td class="c">${RANKS[i]}</td><td><strong>${esc(c[0])}</strong></td><td>${esc(c[1])}</td></tr>`)),true))]]);
  app.innerHTML=`<div class="codex"><nav class="toc" aria-label="Contents">${S.map(([id,t])=>`<a href="#rules" data-jump="${id}">${t}</a>`).join('')}</nav>
