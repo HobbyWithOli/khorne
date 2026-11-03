@@ -1219,8 +1219,10 @@ function renderPick(){const f=byUid(UI.pick.uid),T=FT[f.type],kind=UI.pick.kind,
  const have=kind==='equip'?(f.items||[]):(f.muts||[]);
  let body='';
  if(kind==='equip'){const cats=CATS.filter(([c])=>EQL.some(e=>e[2]===c&&e[3].includes(T.code)));const cur=cats.some(c=>c[0]===UI.pickCat)?UI.pickCat:'all';
-  const list=EQL.filter(e=>e[3].includes(T.code)&&(cur==='all'||e[2]===cur)).map(e=>EQ[e[0]]).filter(E=>!q||(E.n+' '+(EQD[E.n]||'')+' '+E.p.map(n=>WP[n]?WP[n][8]:'').join(' ')).toLowerCase().includes(q));
+  let list=EQL.filter(e=>e[3].includes(T.code)&&(cur==='all'||e[2]===cur)).map(e=>EQ[e[0]]).filter(E=>!q||(E.n+' '+(EQD[E.n]||'')+' '+E.p.map(n=>WP[n]?WP[n][8]:'').join(' ')).toLowerCase().includes(q));
+  const repHidden=UI.hideRep?list.filter(E=>E.rep&&G.rep<E.rep).length:0;if(UI.hideRep)list=list.filter(E=>!(E.rep&&G.rep<E.rep));
   body=`<div class="seg" role="group" aria-label="Category"><button data-pcat="all" aria-pressed="${cur==='all'}">All</button>${cats.map(([c,l])=>`<button data-pcat="${c}" aria-pressed="${cur===c}">${l.replace(' weapons','').replace(' equipment','')}</button>`).join('')}</div>
+  <div class="row"><button class="btn small ${UI.hideRep?'primary':''}" data-hiderep aria-pressed="${!!UI.hideRep}">${UI.hideRep?'✓ ':''}Hide items above Rep ${G.rep}</button>${UI.hideRep&&repHidden?`<span class="muted" style="font-size:.85rem">${repHidden} hidden</span>`:''}</div>
   <div class="pgrid">${list.map(E=>{const why=pickReason(f,E),warn=pickWarn(f,E),own=have.filter(x=>x===E.n).length,used=itemCount(E.n);
    return `<article class="pc ${why?'off':''}"><div class="pch"><h3>${esc(E.n)}</h3><span class="big" style="font-size:1.1rem">${E.c}<small class="muted"> cr</small></span></div>
    <div class="row">${E.lim?`<span class="pill">Gang 0-${E.lim} · ${used} taken</span>`:''}${E.rep?`<span class="pill ${G.rep<E.rep?'blood':''}">Rep ${E.rep}</span>`:''}${own?`<span class="pill brass">Carrying ${own}</span>`:''}${warn?`<span class="pill blood">${esc(warn)}</span>`:''}</div>
@@ -1241,6 +1243,7 @@ function renderPick(){const f=byUid(UI.pick.uid),T=FT[f.type],kind=UI.pick.kind,
   ${body}</div>`}
 app.addEventListener('click',e=>{if(!document.querySelector('.picker'))return;const el=e.target.closest('button');if(!el)return;const d=el.dataset;const f=byUid(UI.pick.uid);const key=UI.pick.kind==='equip'?'items':'muts';
  if(d.pcat){UI.pickCat=d.pcat;saveUI();renderPick();return}
+ if('hiderep' in d){UI.hideRep=!UI.hideRep;saveUI();renderPick();return}
  if(d.padd){f[key]=(f[key]||[]).concat(d.padd);G.example=false;save();renderPick();toast(`${d.padd} added`);return}
  if(d.prm){const i=(f[key]||[]).lastIndexOf(d.prm);if(i>-1)f[key].splice(i,1);save();renderPick();return}
  if(d.act==='pickdone'){G.fighters.forEach(x=>x.open=x.uid===f.uid);save();UI.scrollTo=f.uid;saveUI();location.hash='#build'}});
